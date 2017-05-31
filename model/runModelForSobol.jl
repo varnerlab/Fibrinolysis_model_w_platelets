@@ -39,15 +39,15 @@ function runModelForSobolParallel()
 end
 
 function runModelForSobolParallel_IncludingInitialConditions()
-	allparams = readdlm("../sensitivity/sobol_paramsN1000pm50_ICandParams_05_31_17.txt", ' ', Float64);
+	allparams = readdlm("../sensitivity/sobol_paramsN5000pm50_ICandParams_05_31_17.txt", ' ', Float64);
 	#allparams = SharedArray(Float64, size(allparamslocal))
 	#allparams =allparamslocal
 	@show size(allparams)
 	numSets = size(allparams,1)
 	paramsPerThread = numSets/nworkers()
 	@sync @parallel for j in collect(1:nworkers())
-		touch(string("../sensitivity/05_31_17_AUCForSobolPM50PercentN1000_", myid()-1, "_of_",nworkers(), ".txt"))
-		f = open(string("../sensitivity/05_31_17_AUCForSobolPM50PercentN1000_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
+		touch(string("../sensitivity/05_31_17_AUCForSobolPM50PercentN5000_", myid()-1, "_of_",nworkers(), ".txt"))
+		f = open(string("../sensitivity/05_31_17_AUCForSobolPM50PercentN5000_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
 		 for k in collect(1:paramsPerThread)
 			offset = (myid()-2)*paramsPerThread
 			@printf("On set %d of %d on threads %d \n", offset+k, numSets, myid())
