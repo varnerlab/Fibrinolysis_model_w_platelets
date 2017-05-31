@@ -939,8 +939,8 @@ end
 
 function generateSobolParamsForPerturbIC()
 	#let's use the averaged top 8 parameter sets
-	startingpt =  readdlm("parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt")
-	outputfn="sensitivity/sobolboundspm50percent_05_26_17.txt"
+	startingpt =  readdlm("../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt")
+	outputfn="../sensitivity/sobolboundspm50percent_05_31_17.txt"
 	meanparams = mean(startingpt,1)
 	data_dictionary=buildCompleteDictFromOneVector(meanparams)
 	names = data_dictionary["parameter_name_mapping_array"]
@@ -957,7 +957,7 @@ function generateSobolParamsForPerturbIC()
 	for name in IC_names
 		if(initial_conditions[j]==0)
 			lb = 0.0
-			up = .1
+			up = 1.0
 		else
 			lb = initial_conditions[j]*.5
 			up = initial_conditions[j]*1.5
