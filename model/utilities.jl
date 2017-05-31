@@ -641,7 +641,7 @@ function makeTrainingFigureBestOveralParams()
 	    "weight"=>"normal",
 	    "size"=>20)
 	close("all")
-	pathToParams="parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt"
+	pathToParams="../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt"
 	ids = [5,6,7,8]
 	tPAs = [0,2]
 	close("all")
@@ -649,9 +649,12 @@ function makeTrainingFigureBestOveralParams()
 	counter = 1
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
-			savestr = string("figures/Patient", ids[j], "_tPA=", tPAs[k], "_18_04_2017.pdf")
+			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_18_04_2017.pdf")
+			datasavestr = string("../generatedData/Patient", ids[j],"_tPA=", tPAs[k], "_31_05_2017.txt" )
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicition(pathToParams, ids[j], tPAs[k], savestr)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
+			writetodisk= hcat(TSIM, transpose(meanROTEM), transpose(stdROTEM))
+			writedlm(datasavestr, writetodisk)
 			@show counter
 			plt[:subplot](size(ids,1),size(tPAs,1),counter)
 			fig=plotAverageROTEMWDataSubplot(fig,TSIM,meanROTEM,stdROTEM,expdata)
@@ -686,7 +689,7 @@ function makeTrainingFigureBestOveralParams()
                ha="right",
                va="top", fontsize = 24, family = "sans-serif")
 
-	savefig("figures/TrainingFigureUsingBest2ParamSetPerObj_25_05_17OriginalShapeFunctionOnlyFittPA2.pdf")
+	savefig("../figures/TrainingFigureUsingBest2ParamSetPerObj_25_05_17OriginalShapeFunctionOnlyFittPA2.pdf")
 end
 
 function makePredictionsFigure()
@@ -695,7 +698,7 @@ function makePredictionsFigure()
 	    "weight"=>"normal",
 	    "size"=>20)
 	close("all")
-	pathToParams="parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt"
+	pathToParams="../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt"
 	ids = [3,4,9,10]
 	tPAs = [0,2]
 	close("all")
@@ -703,8 +706,12 @@ function makePredictionsFigure()
 	counter = 1
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
-			savestr = string("figures/Patient", ids[j], "_tPA=", tPAs[k], "_18_04_2017.pdf")
+			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_31_05_2017.pdf")
+			datasavestr = string("../generatedData/Patient", ids[j],"_tPA=", tPAs[k], "_31_05_2017.txt" )
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicition(pathToParams, ids[j], tPAs[k], savestr)
+			@show size(TSIM), meanROTEM, stdROTEM
+			writetodisk= hcat(TSIM, transpose(meanROTEM), transpose(stdROTEM))
+			writedlm(datasavestr, writetodisk)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
 			@show counter
 			plt[:subplot](size(ids,1),size(tPAs,1),counter)
@@ -740,7 +747,7 @@ function makePredictionsFigure()
                ha="right",
                va="top", fontsize = 24, family = "sans-serif")
 
-	savefig("figures/PredictionsFigureUsingBest2ParamSetPerObj_25_05_17OriginalShapeFunctionOnlyFittPA2.pdf")
+	savefig("../figures/PredictionsFigureUsingBest2ParamSetPerObj_31_05_17OriginalShapeFunctionOnlyFittPA2.pdf")
 end
 
 function testROTEMPredicitionGivenParams(allparams,patient_id,tPA,savestr)
