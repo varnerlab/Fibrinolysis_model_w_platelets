@@ -16,7 +16,7 @@ function makeSobolGraphNoAnnotations()
 	numparams = 77+22
 	fig=figure(figsize=[35,15])
 	plt[:tight_layout]=true
-	data = readdlm("../sensitivity/soboloutputpm50percentICandParams_05_31_17_N1000.txt")
+	data = readdlm("../sensitivity/SobolOutpt_05_31_17_AUCForSobolParamsAndICPM50PercentN5000.txt")
 	topHalf = data[1:numparams+1, :]
 	@show topHalf
 	usefulData = topHalf[2:end, :]
@@ -30,7 +30,7 @@ function makeSobolGraphNoAnnotations()
 	ax[:tick_params](labelsize=20)
 	#lines and label for kinetic parameters
 	ax[:xaxis][:set_ticklabels](usefulData[:,1], rotation = 90, fontsize = 14)
-	savefig("../sensitivity/SobolTotalOrderN1000_05_31_17.pdf", bbox_inches = "tight")
+	savefig("../sensitivity/SobolTotalOrderN5000_05_31_17.pdf", bbox_inches = "tight")
 end
 
 function makeSobolGraphNoAnnotationsOnlyIC()

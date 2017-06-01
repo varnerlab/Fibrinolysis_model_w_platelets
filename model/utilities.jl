@@ -1011,7 +1011,7 @@ function generateSobolParamsForOnlyPerturbIC()
 end
 
 function concatSobolResults()
-	filestr1 = "../sensitivity/05_31_17_AUCForSobolPM50PercentN1000_"
+	filestr1 = "../sensitivity/05_31_17_AUCForSobolPM50PercentN5000_"
 	filestr2="_of_8.txt"
 	str = ""
 	for j in collect(1:8)
@@ -1019,7 +1019,7 @@ function concatSobolResults()
 		currstr = replace(readstring(fn), ",", " ")
 		str = string(str, currstr)
 	end
-	write("../sensitivity/AllSobol_05_31_17_AUCForSobolParamsAndICPM50PercentN1000.txt", str)
+	write("../sensitivity/AllSobol_05_31_17_AUCForSobolParamsAndICPM50PercentN5000.txt", str)
 end
 
 function checkThermoFeasability(params)
