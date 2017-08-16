@@ -752,7 +752,7 @@ end
 
 function testROTEMPredicitionGivenParams(allparams,patient_id,tPA,savestr)
 	numparams = 77
-	pathToThrombinData="../data/fromOrfeo_Thrombin_HT_PRP.txt"
+	pathToThrombinData="../data/fromOrfeo_Thrombin_BL_PRP.txt"
 	TSTART = 0.0
 	Ts = .02
 	if(tPA==0)
@@ -798,7 +798,7 @@ function testROTEMPredicitionGivenParams(allparams,patient_id,tPA,savestr)
 	alldata = map(Float64,alldata)
 	meanROTEM = mean(alldata,1)
 	stdROTEM = std(alldata,1)
-	#plotAverageROTEMWData(TSIM, meanROTEM, stdROTEM, usefuldata,savestr)
+	plotAverageROTEMWData(TSIM, meanROTEM, stdROTEM, usefuldata,savestr)
 	return alldata, meanROTEM, stdROTEM, TSIM
 end
 
@@ -807,7 +807,7 @@ end
 function testROTEMPredicition(pathToParams,patient_id,tPA,savestr)
 	numparams = 77
 	allparams = readdlm(pathToParams, '\t')
-	pathToThrombinData="../data/fromOrfeo_Thrombin_HT_PRP.txt"
+	pathToThrombinData="../data/fromOrfeo_Thrombin_BL_PRP.txt"
 	TSTART = 0.0
 	Ts = .02
 	if(tPA==0)
@@ -854,7 +854,7 @@ function testROTEMPredicition(pathToParams,patient_id,tPA,savestr)
 	alldata = map(Float64,alldata)
 	meanROTEM = mean(alldata,1)
 	stdROTEM = std(alldata,1)
-	#plotAverageROTEMWData(TSIM, meanROTEM, stdROTEM, usefuldata,savestr)
+	plotAverageROTEMWData(TSIM, meanROTEM, stdROTEM, usefuldata,savestr)
 	return alldata, meanROTEM, stdROTEM, TSIM
 end
 
