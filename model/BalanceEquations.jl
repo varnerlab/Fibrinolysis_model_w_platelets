@@ -140,6 +140,7 @@ end
 	aleph = PROBLEM_DICTIONARY["ALEPH"]
 	faleph = aleph^platelet_pwr/(aleph^platelet_pwr + platelet_denom^platelet_pwr)
 	EpsMax = EpsMax0+(1-EpsMax0)*faleph
+	#@show aleph, falpeh, EpsMax
 
 	#timing
 	time_delay = timing[1]

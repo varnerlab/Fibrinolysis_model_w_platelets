@@ -270,7 +270,7 @@ function plotAverageThrobinWData(t,meanThrombin,stdThrombin,pathToData,MSE, save
 	fig = figure(figsize = (15,15))
 	ax = gca()
 	ax[:tick_params]("both",labelsize=24) 
-	plot(expdata[:,1]./60, (expdata[:,4]), ".k")
+	plot(expdata[:,1]./60, (expdata[:,4]), ".k", markersize=10)
 	ylabel("Thrombin Concentration, nM", fontsize=28)
 	xlabel("Time, in minutes",fontsize =28)
 	plot(t, transpose(meanThrombin), "k")
@@ -619,4 +619,10 @@ function runModelWithParamsSetF8OnePlot(fig,params, FVIIIcontrol, index)
 	#makeLoopPlots(t,X)
 	MSE, interpolatedExperimentalData=calculateMSE(t, [a[2] for a in X], readdlm(pathToData, ','))
 	return fig
+end
+
+function makeThrominFigureForPoster()
+	allparams = readdlm("../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt", '\t')
+	runModelWithParamsPeturbIC(allparams[4,:],30)
+
 end
