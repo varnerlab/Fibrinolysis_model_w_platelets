@@ -35,6 +35,7 @@ function plotAverageROTEM()
 		data=Array{Float64}(data)
 		time = data[:,1]
 		avg_run = mean(data[:,2:3],2);
+		calculateCommonMetrics(avg_run,time./60)
 		plot(time, avg_run, "-", color= colorstr, linewidth = widths[j]);
 		j = j+1
 	end

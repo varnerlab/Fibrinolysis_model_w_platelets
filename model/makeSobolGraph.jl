@@ -64,10 +64,10 @@ function makeSobolGraphNoAnnotationsOnlyIC()
 end
 
 function makeSobolGraph()
-	font1 = Dict("family"=>"sans-serif",
+	font1 = Dict(
 	    "color"=>"black",
 	    "weight"=>"normal",
-	    "size"=>24)
+	    "size"=>40)
 
 	font2 = Dict("family"=>"sans-serif",
 	    "color"=>"black",
@@ -76,12 +76,12 @@ function makeSobolGraph()
 	close("all")
 	numparams = 77
 	fig=figure(figsize=[25,15])
-	data = readdlm("sensitivity/SobolOputput_pm50_N5000_04_24_2017.txt")
+	data = readdlm("../sensitivity/SobolOputput_pm50_N5000_04_24_2017.txt")
 	topHalf = data[1:numparams+1, :]
 	@show topHalf
 	usefulData = topHalf[2:end, :]
 	positions = collect(0:numparams-1)
-	bar(positions, usefulData[:,4],color = "k", yerr=usefulData[:,5], align="center")
+	bar(positions, usefulData[:,4],color = "k", yerr=usefulData[:,5], align="center", ecolor = "grey")
 	ax = gca()
 	ax[:xaxis][:set_ticks](positions)
 	ylabel("Total Order Sensitivity Indicies", fontdict=font1)
@@ -92,86 +92,108 @@ function makeSobolGraph()
 	ax[:xaxis][:set_ticklabels]([], rotation = 80, fontsize = 5)
 	#ax[:xaxis][:set_ticklabels](usefulData[:,1], rotation = 80, fontsize = 5)
 	annotate("",
-		xy=[.125;.83],
-		xycoords="figure fraction",
-		xytext=[.3,0.83],
-		textcoords="figure fraction",
+		xy=[0;-.02],
+		xycoords=("data","axes fraction"),
+		xytext=[17.5;-0.02],
+		textcoords=("data","axes fraction"),
 		ha="right",
 		va="top",
 		arrowprops = Dict("facecolor"=> "black", "arrowstyle" => "-" ))
-	annotate("Thombin Generation Kinetic Parameters",
-		xy=[.12;.81],
-		xycoords="figure fraction",
-		xytext=[.29,0.81],
-		textcoords="figure fraction",
+	annotate("Thombin Kinetic    ",
+		fontsize=30,
+		xy=[0;-.03],
+		xycoords=("data","axes fraction"),
+		xytext=[17;-.03],
+		textcoords=("data","axes fraction"),
 		ha="right",
 		va="top")
 
 	annotate("",
-		xy=[.3;.72],
-		xycoords="figure fraction",
-		xytext=[.5,0.72],
-		textcoords="figure fraction",
+		xy=[17.5;-.02],
+		xycoords=("data","axes fraction"),
+		xytext=[38,-.02],
+		textcoords=("data","axes fraction"),
 		ha="right",
 		va="top",
 		arrowprops = Dict("facecolor"=> "black", "arrowstyle" => "-" ))
 
-	annotate("Thrombin Generation Control Parameters",
-		xy=[.3;.71],
-		xycoords="figure fraction",
-		xytext=[.475,0.71],
-		textcoords="figure fraction",
+	annotate("Thrombin Control    ",
+		fontsize=30,
+		xy=[17.5,-.03],
+		xycoords=("data","axes fraction"),
+		xytext=[38,-0.03],
+		textcoords=("data","axes fraction"),
 		ha="right",
 		va="top")
 
 	annotate("",
-		xy=[.505;.83],
-		xycoords="figure fraction",
-		xytext=[.59,0.83],
-		textcoords="figure fraction",
+		xy=[38.0;-.02],
+		xycoords=("data","axes fraction"),
+		xytext=[44,-.02],
+		textcoords=("data","axes fraction"),
 		ha="right",
 		va="top",
 		arrowprops = Dict("facecolor"=> "black", "arrowstyle" => "-" ))
 
-	annotate("Platelet Parameters",
-		xy=[.3;.82],
-		xycoords="figure fraction",
-		xytext=[.575,0.82],
-		textcoords="figure fraction",
+	annotate("Platelet  ",
+		fontsize=24,
+		xy=[38.25;-0.03],
+		xycoords=("data","axes fraction"),
+		xytext=[44,-.03],
+		textcoords=("data","axes fraction"),
 		ha="right",
 		va="top")
 
 	annotate("",
-		xy=[.595;.64],
-		xycoords="figure fraction",
-		xytext=[.81,0.64],
-		textcoords="figure fraction",
+		xy=[44;-.02],
+		xycoords=("data","axes fraction"),
+		xytext=[47,-.02],
+		textcoords=("data","axes fraction"),
 		ha="right",
 		va="top",
 		arrowprops = Dict("facecolor"=> "black", "arrowstyle" => "-" ))
 
-	annotate("Fibrin Kinetic Parameters",
-		xy=[.65;.63],
-		xycoords="figure fraction",
-		xytext=[.75,0.63],
-		textcoords="figure fraction",
+	annotate("Timing",
+		fontsize=20,
+		xy=[44;-0.03],
+		xycoords=("data","axes fraction"),
+		xytext=[47,-.03],
+		textcoords=("data","axes fraction"),
+		ha="right",
+		va="top")
+	annotate("",
+		xy=[47;-.02],
+		xycoords=("data","axes fraction"),
+		xytext=[69,-.02],
+		textcoords=("data","axes fraction"),
+		ha="right",
+		va="top",
+		arrowprops = Dict("facecolor"=> "black", "arrowstyle" => "-" ))
+
+	annotate("Fibrin Kinetic             ",
+		fontsize=30,
+		xy=[47;-.03],
+		xycoords=("data","axes fraction"),
+		xytext=[69,-.03],
+		textcoords=("data","axes fraction"),
 		ha="right",
 		va="top")
 
 		annotate("",
-		xy=[.815;.85],
-		xycoords="figure fraction",
-		xytext=[.9,0.85],
-		textcoords="figure fraction",
+		xy=[69;-.02],
+		xycoords=("data","axes fraction"),
+		xytext=[77,-.02],
+		textcoords=("data","axes fraction"),
 		ha="right",
 		va="top",
 		arrowprops = Dict("facecolor"=> "black", "arrowstyle" => "-" ))
 
-	annotate("Fibrin Control Parameters",
-		xy=[.85;.82],
-		xycoords="figure fraction",
-		xytext=[.9,0.82],
-		textcoords="figure fraction",
+	annotate("Fibrin  \nControl ",
+		fontsize =30,
+		xy=[69;-.03],
+		xycoords=("data","axes fraction"),
+		xytext=[77,-.03],
+		textcoords=("data","axes fraction"),
 		ha="right",
 		va="top")
 	#label columns of interest
@@ -180,8 +202,9 @@ function makeSobolGraph()
 		xycoords="data", # Coordinates in in "data" units
 		xytext=[9;.45], # Text offset from tip
 		textcoords="data",
-		ha="right",
+		ha="center",
 		va="top",
+		fontsize=30,
 		arrowprops=Dict("facecolor"=>"black", "width"=>.5, "headwidth"=>3)) #
 
 	annotate("Trigger Control Parameters",
@@ -189,8 +212,9 @@ function makeSobolGraph()
 		xycoords="data",
 		xytext=[20.5,0.15],
 		textcoords="data",
-		ha="right",
+		ha="center",
 		va="top",
+		fontsize=30,
 		arrowprops = Dict("facecolor"=> "black", "width"=>.5))
 
 	annotate("k_cat_fibrinogen",
@@ -198,10 +222,12 @@ function makeSobolGraph()
 		xycoords="data", # Coordinates in in "data" units
 		xytext=[46;.45], # Text offset from tip
 		textcoords="data",
-		ha="right",
+		ha="center",
 		va="top",
+		fontsize=30,
 		arrowprops=Dict("facecolor"=>"black", "width"=>.5, "headwidth"=>3))
+	xlabel("\nParameter Index", fontsize = 40)
 
-	savefig("sensitivity/SobolTotalOrderN5000.pdf")
+	savefig("../sensitivity/SobolTotalOrderN5000_24_08_17.pdf")
 	
 end

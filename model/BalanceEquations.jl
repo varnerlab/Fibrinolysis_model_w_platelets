@@ -286,7 +286,7 @@ end
 #	close(f)
 
 	# calculate dxdt_reaction -
-	dxdt_total = zeros(size(x,1),1)
+	dxdt_total = similar(x)
 	
 	dxdt_total[1] = -1*modified_rate_vector[2] -modified_rate_vector[7]-modified_rate_vector[6]	# 1 FII
 	dxdt_total[2] = modified_rate_vector[2] - modified_rate_vector[4]+modified_rate_vector[7]+modified_rate_vector[6]	 # 2 FIIa
@@ -338,6 +338,8 @@ end
 #	@show t, x[2]
 #	@show modified_rate_vector[12:end]
 #	@show dxdt_total[12:end]
+	dxdt_total = vec(dxdt_total)
+	#@show typeof(x), typeof(dxdt_total)
 	 return dxdt_total
 
 end

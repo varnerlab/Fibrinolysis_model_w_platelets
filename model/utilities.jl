@@ -1,5 +1,8 @@
 using PyPlot
 using ExcelReaders
+#for helvetical
+using PyCall
+PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
 
 @everywhere function calculateMSE(t,predictedCurve, experimentalData)
 	num_points = size(t,1)
@@ -351,8 +354,8 @@ end
 function plotAllTradeOffCurves(ec_array, ra_array, num_objectives)
 	idx1 = collect(1:1:num_objectives)
 	idx2= collect(1:1:num_objectives)
-	for(j in idx1)
-		for(k in idx2)
+	for j in idx1
+		for k in idx2
 			if(j!=k)
 				plotTradeOffCurve(ec_array, ra_array, j, k)
 			end
@@ -537,19 +540,19 @@ function plotAverageROTEMWData(t,meanROTEM,stdROTEM,expdata, savestr)
 	savefig(savestr)
 end
 
-function plotAverageROTEMWDataSubplot(fig,t,meanROTEM,stdROTEM,expdata)
-	plot(t, transpose(meanROTEM), "k")
+function plotAverageROTEMWDataSubplot(ax,t,meanROTEM,stdROTEM,expdata)
+	ax[:plot](t, transpose(meanROTEM), "k")
 	#axis([0, t[end], 0, 150])
 	@show size(meanROTEM)
 	@show size(stdROTEM)
 	@show size(t)
-	upper = transpose(meanROTEM+stdROTEM)
-	lower = transpose(meanROTEM-stdROTEM)
+	upper = transpose(meanROTEM+1.96*stdROTEM)
+	lower = transpose(meanROTEM-1.96*stdROTEM)
 	@show size(vec(upper))
 	@show size(vec(lower))
-	fill_between((t), vec(upper), vec(lower), color = ".5", alpha =.5)
-	plot(expdata[:,1], expdata[:,2], ".k")
-	return fig
+	ax[:fill_between]((t), vec(upper), vec(lower), color = "lightskyblue", alpha =.5)
+	ax[:plot](expdata[:,1], expdata[:,2], ".k")
+	return ax
 end
 
 function makeAllPredictions()
@@ -588,7 +591,7 @@ function makeTrainingFigure()
 	ids = [5,6,7,8]
 	tPAs = [0,2]
 	close("all")
-	fig=figure(figsize = [15,15])
+	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
 	counter = 1
 	numParamSets = 15
 	for j in collect(1:size(ids,1))
@@ -598,11 +601,17 @@ function makeTrainingFigure()
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParams(bestparams, ids[j], tPAs[k], savestr)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
 			@show counter
-			plt[:subplot](4,2,counter)
-			fig=plotAverageROTEMWDataSubplot(fig,TSIM,meanROTEM,stdROTEM,expdata)
+			curraxis=axarr[j,k]
+			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
+			curraxis[:plot](t, transpose(meanROTEM), "k")
+			upper = transpose(meanROTEM+stdROTEM)
+			lower = transpose(meanROTEM-stdROTEM)
+			curraxis[:fill_between]((t), vec(upper), vec(lower), color = ".5", alpha =.5)
+			curraxis[:plot](expdata[:,1], expdata[:,2], ".k")
 			if(mod(counter,2)==1)
-				axis([0, TSIM[end], 0, 70])
-				ylabel(string("Patient ", ids[j]), fontdict=font2)
+				curraxis[:set_ylim](0, 70)
+				curraxis[:set_xlim](0,TSIM[end])
+				currasix[:set_ylabel](string("Patient ", ids[j]), fontdict=font2)
 			else
 				axis([0, TSIM[end], 0, 90])
 			end
@@ -636,7 +645,7 @@ function makeTrainingFigure()
 end
 
 function makeTrainingFigureBestOveralParams()
-	font2 = Dict("family"=>"sans-serif",
+	font2 = Dict(
 	    "color"=>"black",
 	    "weight"=>"normal",
 	    "size"=>20)
@@ -645,7 +654,7 @@ function makeTrainingFigureBestOveralParams()
 	ids = [5,6,7,8]
 	tPAs = [0,2]
 	close("all")
-	fig=figure(figsize = [15,15])
+	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
 	counter = 1
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
@@ -656,8 +665,8 @@ function makeTrainingFigureBestOveralParams()
 			writetodisk= hcat(TSIM, transpose(meanROTEM), transpose(stdROTEM))
 			writedlm(datasavestr, writetodisk)
 			@show counter
-			plt[:subplot](size(ids,1),size(tPAs,1),counter)
-			fig=plotAverageROTEMWDataSubplot(fig,TSIM,meanROTEM,stdROTEM,expdata)
+			curraxis=axarr[j,k]
+			plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
 			if(mod(counter,2)==1)
 				axis([0, TSIM[end], 0, 80])
 				ylabel(string("Patient ", ids[j]), fontdict=font2)
@@ -674,56 +683,65 @@ function makeTrainingFigureBestOveralParams()
 		end
 	end
 	#label columns
-	annotate("tPA = 0 micromolar",
-               xy=[.12;.95],
-               xycoords="figure fraction",
-               xytext=[.39,0.95],
-               textcoords="figure fraction",
-               ha="right",
-               va="top", fontsize = 24, family = "sans-serif")
-	annotate("tPA = 2 micromolar",
-               xy=[.12;.95],
-               xycoords="figure fraction",
-               xytext=[.85,0.95],
-               textcoords="figure fraction",
-               ha="right",
-               va="top", fontsize = 24, family = "sans-serif")
+#	annotate("tPA = 0 micromolar",
+#               xy=[.12;.95],
+#               xycoords="figure fraction",
+#               xytext=[.39,0.95],
+#               textcoords="figure fraction",
+#               ha="right",
+#               va="top", fontsize = 24, family = "sans-serif")
+#	annotate("tPA = 2 micromolar",
+#               xy=[.12;.95],
+#               xycoords="figure fraction",
+#               xytext=[.85,0.95],
+#               textcoords="figure fraction",
+#               ha="right",
+#               va="top", fontsize = 24, family = "sans-serif")
+	figure = fig
+	axisarr[1,1][:set_title]("tPA = 0 nanomolar")
+	axisarr[1,2][:set_title]("tPA = 2 nanomolar")
 
 	savefig("../figures/TrainingFigureUsingBest2ParamSetPerObj_25_05_17OriginalShapeFunctionOnlyFittPA2.pdf")
 end
 
 function makePredictionsFigure()
-	font2 = Dict("family"=>"sans-serif",
+	font2 = Dict(
 	    "color"=>"black",
 	    "weight"=>"normal",
-	    "size"=>20)
+	    "size"=>28)
 	close("all")
 	pathToParams="../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt"
 	ids = [3,4,9,10]
 	tPAs = [0,2]
 	close("all")
-	fig=figure(figsize = [15,15])
+	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
 	counter = 1
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
-			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_31_05_2017.pdf")
-			datasavestr = string("../generatedData/Patient", ids[j],"_tPA=", tPAs[k], "_31_05_2017.txt" )
+			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_28_11_2017.pdf")
+			datasavestr = string("../generatedData/Patient", ids[j],"_tPA=", tPAs[k], "_28_11_2017.txt" )
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicition(pathToParams, ids[j], tPAs[k], savestr)
-			@show size(TSIM), meanROTEM, stdROTEM
+			println("For patient", ids[j], "with ", tPAs[k], "tPA")
+			calculateCommonMetrics(meanROTEM,TSIM)
 			writetodisk= hcat(TSIM, transpose(meanROTEM), transpose(stdROTEM))
 			writedlm(datasavestr, writetodisk)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
-			@show counter
-			plt[:subplot](size(ids,1),size(tPAs,1),counter)
-			fig=plotAverageROTEMWDataSubplot(fig,TSIM,meanROTEM,stdROTEM,expdata)
+			#plt[:subplot](size(ids,1),size(tPAs,1),counter)
+			curraxis=axarr[j,k]
+			plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
+			curraxis[:tick_params]("both", labelsize=18)
+			curraxis[:locator_params](nbins = 4, axis = "y")
+			curraxis[:locator_params](nbins = 4, axis = "x")
 			if(mod(counter,2)==1)
-				axis([0, TSIM[end], 0, 80])
-				ylabel(string("Patient ", ids[j]), fontdict=font2)
+				curraxis[:set_ylim](0, 70)
+				curraxis[:set_xlim](0,TSIM[end])
+				curraxis[:set_ylabel](string("Patient ", ids[j]), fontdict=font2)
 			else
-				axis([0, TSIM[end], 0, 80])
+				curraxis[:set_ylim](0, 80)
+				curraxis[:set_xlim](0,TSIM[end])
 			end
 			if(counter==7 || counter ==8)
-				xlabel("Time, in minutes", fontdict = font2)
+				xlabel("Time, in minutes", fontsize=32)
 			else
 				ax =gca()
 				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
@@ -732,22 +750,28 @@ function makePredictionsFigure()
 		end
 	end
 	#label columns
-	annotate("tPA = 0 micromolar",
-               xy=[.12;.95],
-               xycoords="figure fraction",
-               xytext=[.39,0.95],
-               textcoords="figure fraction",
-               ha="right",
-               va="top", fontsize = 24, family = "sans-serif")
-	annotate("tPA = 2 micromolar",
-               xy=[.12;.95],
-               xycoords="figure fraction",
-               xytext=[.85,0.95],
-               textcoords="figure fraction",
-               ha="right",
-               va="top", fontsize = 24, family = "sans-serif")
+#	annotate("tPA = 0 micromolar",
+#               xy=[.12;.95],
+#               xycoords="figure fraction",
+#               xytext=[.39,0.95],
+#               textcoords="figure fraction",
+#               ha="right",
+#               va="top", fontsize = 24)#, family = "sans-serif")
+#	annotate("tPA = 2 micromolar",
+#               xy=[.12;.95],
+#               xycoords="figure fraction",
+#               xytext=[.85,0.95],
+#               textcoords="figure fraction",
+#               ha="right",
+#               va="top", fontsize = 24)#, family = "sans-serif")
+	axarr[1,1][:set_title]("tPA = 0 nanomolar", fontsize = 32)
+	axarr[1,2][:set_title]("tPA = 2 nanomolar", fontsize =32)
+	axarr[4,1][:set_xlabel]("Time, in minutes",fontsize = 32)
+	axarr[4,2][:set_xlabel]("Time, in minutes",fontsize = 32)
+	fig[:text](0.06, 0.5, "Clot Amplitude (mm) \n", ha="center", va="center", rotation="vertical",fontsize=40)
 
-	savefig("../figures/PredictionsFigureUsingBest2ParamSetPerObj_31_05_17OriginalShapeFunctionOnlyFittPA2.pdf")
+	figure(1)
+	savefig("../figures/PredictionsFigureUsingBest2ParamSetPerObj_31_05_17OriginalShapeFunctionOnlyFittPA95Percent.pdf")
 end
 
 function testROTEMPredicitionGivenParams(allparams,patient_id,tPA,savestr)
@@ -923,6 +947,133 @@ function testROTEMPredicitionAndPlot(pathToParams,patient_id,tPA,savestr)
 	return alldata, meanROTEM, stdROTEM, TSIM
 end
 
+function generateAvgROTEMCurve(patient_id,tPA, IC_to_alter)
+	pathToParams="../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt"
+	numparams = 77
+	allparams = readdlm(pathToParams, '\t')
+	pathToThrombinData="../data/fromOrfeo_Thrombin_HT_PRP.txt"
+	TSTART = 0.0
+	Ts = .02
+	if(tPA==0)
+		TSTOP =180.0
+	else
+		TSTOP = 60.0
+	end
+	TSIM = collect(TSTART:Ts:TSTOP)
+	platelets,usefuldata = setROTEMIC(tPA, patient_id)
+	platelet_count =platelets
+	alldata = zeros(1,size(TSIM,1))
+	if(size(allparams,1)==numparams) #deal with parameters being stored either vertically or horizontally
+		itridx = 2
+	else
+		itridx = 1
+	end
+	
+	for j in collect(1:size(allparams,itridx))
+		if(itridx ==2)
+			currparams = vec(allparams[:,j])
+		else
+			currparams = vec(allparams[j,:])
+		end
+		@show currparams
+		currparams[47]=platelet_count
+		dict = buildCompleteDictFromOneVector(currparams)
+		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
+		initial_condition_vector[16]=tPA #set tPA level
+		initial_condition_vector =alterIC(initial_condition_vector,IC_to_alter)
+		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
+		fbalances(t,y)= BalanceEquations(t,y,dict)
+		tic() 
+		t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
+		toc()	
+		A = convertToROTEM(t,X,tPA)
+		alldata=vcat(alldata,transpose(A))
+	end
+	alldata = alldata[2:end, :] #remove row of zeros
+	alldata = map(Float64,alldata)
+	meanROTEM = mean(alldata,1)
+	stdROTEM = std(alldata,1)
+	return alldata, meanROTEM, stdROTEM, TSIM
+end
+
+function characterizeCurve(patient_id,tPA)
+	tic()
+	IC_to_alter = Dict()
+	alldata, meanROTEM, stdROTEM, TSIM=generateAvgROTEMCurve(patient_id,tPA,IC_to_alter)
+	toc()
+	calculateCommonMetrics(meanROTEM,TSIM)
+	return alldata, meanROTEM, stdROTEM, TSIM
+end
+
+function characterizeCurve(patient_id,tPA,IC_to_alter)
+	tic()
+	alldata, meanROTEM, stdROTEM, TSIM=generateAvgROTEMCurve(patient_id,tPA,IC_to_alter)
+	toc()
+	calculateCommonMetrics(meanROTEM,TSIM)
+	return alldata, meanROTEM, stdROTEM, TSIM
+end
+
+function compareFibrinogenSup(patient_id,tPA)
+	close("all")
+#	depleated=Dict("Fibrinogen"=>.5)
+#	normal = Dict("Fibrinogen"=>1.0)
+#	supplemented=Dict("Fibrinogen"=>1.5)
+	f1=figure()		
+	allCTs = []
+
+	#cases = [depleated, normal,supplemented]
+	cases = collect(.1:.25:2.0)
+	for case in cases
+		currdict = Dict("Fibrinogen"=>case)
+		alldata, meanROTEM, stdROTEM, TSIM=characterizeCurve(patient_id, tPA, currdict)
+		CT,CFT,alpha,MCF,A10,A20,LI30,LI60=calculateCommonMetrics(meanROTEM,TSIM)
+		plot(TSIM, vec(meanROTEM))
+		push!(allCTs,CT)
+	end
+	f2=figure()
+	plot(cases,allCTs,"kx")
+	xlabel("Percent of Normal Fibrinogen Concentration")
+	ylabel("CT (in seconds)")
+	savefig("../figures/CT_by_Fibrinogen.pdf")
+
+end
+
+function comparePCCSup(patient_id,tPA)
+	close("all")
+	f1=figure()		
+	allCTs = []
+	cases = collect(.1:.1:1.3)
+	for case in cases
+		currdict = Dict("FII"=>case, "FV_FX"=>case)
+		alldata, meanROTEM, stdROTEM, TSIM=characterizeCurve(patient_id, tPA, currdict)
+		CT,CFT,alpha,MCF,A10,A20,LI30,LI60=calculateCommonMetrics(meanROTEM,TSIM)
+		plot(TSIM, vec(meanROTEM))
+		push!(allCTs,CT)
+	end
+	f2=figure()
+	plot(cases,allCTs,"kx")
+	xlabel("Percent of Normal FII and FV_FX concentration")
+	ylabel("CT (in seconds)")
+	savefig("../figures/CT_by_PCC.pdf")
+end
+
+function createSpeciesNameIdxDict()
+	names = ["FII", "FIIa", "PC", "APC", "ATIII", "TM", "TRIGGER", "Fraction Activated Platelets", "FV_FX", "FV_FXa", "Prothombinase-Platelets",
+	"Fibrin", "Plasmin", "Fibrinogen", "Plasminogen", "tPA", "uPA", "fibrin monomer", "protofibril", "antiplasmin", "PAI_1", "Fiber"]
+	nameIdxDict =Dict(names[i]=> i for i = 1:maximum(size(names)))
+	return nameIdxDict
+	
+end
+
+function alterIC(IC, dict_to_alter)
+	#will multiply selected IC in dict_to_alter by the amount specified in the dict
+	nameIdxDict = createSpeciesNameIdxDict()
+	for key in keys(dict_to_alter)
+		IC[nameIdxDict[key]] = IC[nameIdxDict[key]]*dict_to_alter[key] 
+	end
+	return IC
+end
+
 function generateSobolParams()
 	#let's use the averaged top 8 parameter sets
 	startingpt =  readdlm("parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt")
@@ -1095,5 +1246,103 @@ function checkThermoFeasability(params)
 
 	return eff_rate
 	
+end
+
+function calculateCT(ROTEM_curve,TSIM)
+	#CT-when we first see an increase in diameter to 2mm
+	j = 1
+	cutoff = 2
+	CT = -1
+	while(j<maximum(size(ROTEM_curve)))
+		if(ROTEM_curve[j]>cutoff)
+			CT = TSIM[j]
+			break
+		end
+		j = j+1
+	end
+	#need to convert to seconds
+	return CT*60
+end
+
+function calculateCFT(ROTEM_curve,TSIM)
+	#difference between CT and how long it takes to get to 20mm
+	CT = calculateCT(ROTEM_curve,TSIM)
+	cutoff = 20.0
+	j =1
+	T20 = -1
+	while(j<maximum(size(ROTEM_curve)))
+		if(ROTEM_curve[j]>cutoff)
+			T20 = TSIM[j] #this is in minutes
+			break
+		end
+		j = j+1
+	end
+	CFT = T20*60-CT
+	#need to convert to seconds
+	return CFT
+end
+
+function calculateAlpha(ROTEM_curve,TSIM)
+	CFT = calculateCFT(ROTEM_curve,TSIM)
+
+	#since we know CT is at 2mm and CFT is at 20mm, we can calculate the slope-this slope is in minutes
+	slope = (20-2)./(CFT*60)
+	alpha = atand(slope)#draw a picture-this works
+	return alpha
+end
+
+function calculateFirmnessAtTime(ROTEM_curve,TSIM,tdesired)
+	j =1
+	firmness = -1
+	while(j<maximum(size(ROTEM_curve)))
+		if(TSIM[j]>=tdesired)
+			firmness = ROTEM_curve[j]
+			break
+		end
+		j = j+1
+	end
+	return firmness
+end
+
+function calculateMCF(ROTEM_curve,TSIM)
+	j = 1
+	MCF = -1
+	while(j<maximum(size(ROTEM_curve)))
+		if(ROTEM_curve[j]>=MCF)
+			MCF = ROTEM_curve[j]
+		end
+		j = j+1
+	end
+	return MCF
+end
+
+function calculateLysisAtTime(ROTEM_curve,TSIM,tdesired)
+	MCF = calculateMCF(ROTEM_curve,TSIM)
+	later_firmess = calculateFirmnessAtTime(ROTEM_curve,TSIM,tdesired)
+	LI = (later_firmess)/MCF #since this is expressed as a percent
+	if(LI <0)
+		LI = 0.0
+	end
+	return LI
+end
+
+function calculateCommonMetrics(ROTEM_curve,TSIM)
+	CT = calculateCT(ROTEM_curve,TSIM)
+	CFT = calculateCFT(ROTEM_curve,TSIM)
+	alpha = calculateAlpha(ROTEM_curve, TSIM)
+	MCF = calculateMCF(ROTEM_curve,TSIM)
+	A10 = calculateFirmnessAtTime(ROTEM_curve,TSIM,10)
+	A20 = calculateFirmnessAtTime(ROTEM_curve,TSIM,20)
+	LI30 = calculateLysisAtTime(ROTEM_curve,TSIM,30)
+	LI60 = calculateLysisAtTime(ROTEM_curve,TSIM,60)
+	println("CT: ", CT, " seconds")
+	println("CFT: ", CFT, " seconds")
+	println("alpha: ",alpha, " degrees")
+	println("MCF: ", MCF, " mm")
+	println("A10: ", A10," mm")
+	println("A20: ",A20," mm")
+	println("LI30: ",LI30, " percent of the MCF remains")
+	println("LI60: ", LI60," percent of the MCF remains")
+	return CT,CFT,alpha,MCF,A10,A20,LI30,LI60
 end
 

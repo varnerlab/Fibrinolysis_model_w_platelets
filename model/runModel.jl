@@ -134,7 +134,7 @@ end
 function plotFibrinSpecies(t,x)
 	selectedidxs = [12,14,18,19,22]
 	legarr = ["Fibrin", "fibrinogen", "fibrin monomer", "protofibril", "Fiber"]
-	for(j in selectedidxs)
+	for j in selectedidxs
 			@show j
 			semilogy(t, [a[j] for a in x])
 	end
@@ -270,7 +270,7 @@ function plotAverageThrobinWData(t,meanThrombin,stdThrombin,pathToData,MSE, save
 	fig = figure(figsize = (15,15))
 	ax = gca()
 	ax[:tick_params]("both",labelsize=24) 
-	plot(expdata[:,1]./60, (expdata[:,4]), ".k", markersize=10)
+	plot(expdata[:,1]./60, (expdata[:,4]), ".k", markersize=20)
 	ylabel("Thrombin Concentration, nM", fontsize=28)
 	xlabel("Time, in minutes",fontsize =28)
 	plot(t, transpose(meanThrombin), "k")
@@ -543,7 +543,7 @@ function runModelWithParamsPeturbIC(params, num_runs)
 		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
 		initial_condition_vector = peturbIC(initial_condition_vector, j)
 		fbalances(t,y)= BalanceEquations(t,y,dict) 
-		t,X = ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6,points=:specified)
+		t,X = ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6,points=:specified)
 		@show size(TSIM)
 		@show size(t)
 		@show size(X)
