@@ -1057,6 +1057,37 @@ function comparePCCSup(patient_id,tPA)
 	savefig("../figures/CT_by_PCC.pdf")
 end
 
+function comparePCCandFCCSup(patient_id,tPA)
+	close("all")
+	f1=figure()		
+	casesFS = collect(.1:.1:2.0)
+	casesPC = collect(.1:.1:2.0)
+	allCTs = zeros(size(casesFS,1), size(casesPC,1))
+	j =1
+	k =1
+	for casePC in casesPC
+		j = 1
+		for caseFS in casesFS
+			currdict = Dict("FII"=>casePC, "FV_FX"=>caseFS, "Fibrinogen"=>caseFS)
+			alldata, meanROTEM, stdROTEM, TSIM=characterizeCurve(patient_id, tPA, currdict)
+			CT,CFT,alpha,MCF,A10,A20,LI30,LI60=calculateCommonMetrics(meanROTEM,TSIM)
+			plot(TSIM, vec(meanROTEM))
+			allCTs[j,k]=CT
+			j=j+1
+		end
+		k = k+1
+	end
+	f2=figure(figsize=(10,10))
+	xgrid = repmat(casesFS,1,maximum(size(casesFS)))
+	ygrid = repmat(casesPC',maximum(size(casesPC)),1)
+	plot_surface(xgrid,ygrid,allCTs, alpha=.8, cmap=ColorMap("coolwarm"))
+	ylabel("Percent of Normal FII and FV_FX concentration")
+	xlabel("Percent of Normal Fibrinogen Concentration")
+	zlabel("CT in seconds")
+	savefig("../figures/CT_by_PCC_and_FS.pdf")
+	return casesFS, casesPC, allCTs
+end
+
 function createSpeciesNameIdxDict()
 	names = ["FII", "FIIa", "PC", "APC", "ATIII", "TM", "TRIGGER", "Fraction Activated Platelets", "FV_FX", "FV_FXa", "Prothombinase-Platelets",
 	"Fibrin", "Plasmin", "Fibrinogen", "Plasminogen", "tPA", "uPA", "fibrin monomer", "protofibril", "antiplasmin", "PAI_1", "Fiber"]
