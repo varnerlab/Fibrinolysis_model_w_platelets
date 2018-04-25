@@ -3,6 +3,7 @@ using ExcelReaders
 #for helvetical
 using PyCall
 PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
+using Distances #for calculated eucliedian distance
 
 @everywhere function calculateMSE(t,predictedCurve, experimentalData)
 	num_points = size(t,1)
@@ -183,7 +184,7 @@ end
 		@show size(pc_array)
 		@show size(total_error)
 	end
-	writedlm(string("parameterEstimation/Best", n, "OverallParameters_19_04_2017.txt"), best_params)
+	writedlm(string("../parameterEstimation/Best", n, "OverallParameters_26_03_2018.txt"), best_params)
 	return best_params
 
 end
@@ -194,14 +195,14 @@ end
 	counter = 1
 	for j in collect(1:num_objectives)
 		curr_error=ec_array[j,:]
-		allidx = collect(1:size(pc,2))
+		allidx = collect(1:size(pc_array,2))
 		removed = allidx
 		for k in collect(1:n)
 			min_index = indmin(curr_error)
 			curr_best_params = pc_array[:,min_index]
 			best_params[counter] = curr_best_params
 			removed = deleteat!(removed, min_index)
-			@show min_index
+			@show min_index, ec_array[:,min_index]
 			#@show curr_best_params
 			#delete the best ones we've found
 			#@show size(total_error)
@@ -211,7 +212,34 @@ end
 			counter=counter+1
 		end
 	end	
-	writedlm(string("parameterEstimation/Best", n, "PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt"), best_params)
+	#writedlm(string("../parameterEstimation/Best", n, "PerObjectiveParameters_11_04_18PlateletContributionToROTEM.txt"), best_params)
+	return best_params
+end
+
+@everywhere function generateNbestPerObjective(n,ec_array, pc_array,savestring)
+	num_objectives =size(ec_array,1)
+	best_params=Array{Array}(num_objectives*n)
+	counter = 1
+	for j in collect(1:num_objectives)
+		curr_error=ec_array[j,:]
+		allidx = collect(1:size(pc_array,2))
+		removed = allidx
+		for k in collect(1:n)
+			min_index = indmin(curr_error)
+			curr_best_params = pc_array[:,min_index]
+			best_params[counter] = curr_best_params
+			removed = deleteat!(removed, min_index)
+			@show min_index, ec_array[:,min_index]
+			#@show curr_best_params
+			#delete the best ones we've found
+			#@show size(total_error)
+			#pc_array=pc_array[:,removed]
+			curr_error=deleteat!(vec(curr_error),min_index)
+			@show size(pc_array)
+			counter=counter+1
+		end
+	end	
+	writedlm(savestring, best_params)
 	return best_params
 end
 
@@ -227,7 +255,6 @@ end
 		curr_best_params = pc_array[:,min_index]
 		best_params[counter] = curr_best_params
 		removed = deleteat!(removed, min_index)
-		@show min_index, curr_error[min_index]
 		#@show curr_best_params
 		#delete the best ones we've found
 		#@show size(total_error)
@@ -277,12 +304,12 @@ end
 
 function parsePOETsoutput(filename)
 	f = open(filename)
-	alltext = readall(f)
+	alltext = readstring(f)
 	close(f)
 
 	outputname = "textparsing.txt"
 	number_of_parameters = 77
-  	number_of_objectives = 8#4
+  	number_of_objectives = 4
 	ec_array = zeros(number_of_objectives)
   	pc_array = zeros(number_of_parameters)
 	rank_array = zeros(1)	
@@ -432,28 +459,42 @@ function setCompleteModelIC(IC, patient_id)
 		IC[15] = IC[15]*.9
 		IC[20] = IC[20]*1.1
 	elseif(patient_id==4)
-		IC[1]=IC[1]*1.05
+		IC[1]=IC[1]*.8
+		IC[3]=IC[3]*1.2
+#		IC[5] = IC[5]*1.2
+#		IC[7] = IC[7]*.9
+		IC[6] = IC[6]*1.1
+#		IC[9]=IC[9]*.8
+		IC[14]=IC[14]*.8
 		IC[15] = IC[15]*.8
-		IC[14]=IC[14]*.5
-		IC[16] = IC[16]*.90
-		#IC[20]=IC[20]*1.35
-		#IC[21] = IC[21]*.75
+		IC[20]=IC[20]*1.2
+		IC[21]=IC[21]*1.2
 	elseif(patient_id==5)
 		IC[1]=IC[1]*1.4
 		IC[5]=IC[5]*.95
 		#IC[20]=IC[20]*1.35
 #	elseif(patient_id==6)
 #		IC[1]=IC[1]*.95
-#	elseif(patient_id==7)
-#		IC[1] = IC[1]*.95
+	elseif(patient_id==7)
+#		IC[1] = IC[1]*.8
+#		IC[3] = IC[3]*1.2
+#		IC[5] = IC[5]*1.2
+#		IC[15] = IC[15]*1.2
+#		IC[20]=IC[20]*.75
 	elseif(patient_id==8)
-		IC[1]= IC[1]*.95
-		#IC[20]=IC[20]*1.35
+#		IC[1]= IC[1]*.8
+#		IC[3] = IC[3]*1.2
+#		IC[5] = IC[5]*1.2
+#		IC[15] = IC[15]*1.2
+#		IC[20]=IC[20]*.75
 #	elseif(patient_id==9)
 #		IC[1]=IC[1]*1.05
 #		IC[20]=IC[20]*1.35
-#	elseif(patient_id==10)
-#		#IC[1]=IC[1]*1.05
+	elseif(patient_id==10)
+		IC[15] = IC[15]*1.2
+		IC[1]=IC[1]*.95
+		IC[13]=IC[13]*1.2
+		IC[20]=IC[20]*.8
 	end
 	return IC
 end
@@ -483,7 +524,12 @@ end
 end
 
 @everywhere function convertToROTEM(t,x, tPA)
-	F = [a[12] for a in x]+ [a[18] for a in x]+ [a[19] for a in x]+ [a[22] for a in x] # fibrin related species 12,18,19,22
+	#to work with Differential Equations
+	if(contains(string(typeof(x)), "DiffEqBase"))
+		F = x[12,:]+x[18,:]+ x[19,:]+x[22,:]
+	else
+		F = [a[12] for a in x]+ [a[18] for a in x]+ [a[19] for a in x]+ [a[22] for a in x] # fibrin related species 12,18,19,22
+	end
 	A0 = .01 #baseline ROTEM signal
 	K = 5.0-3.75*tPA
 	#K = 1
@@ -497,6 +543,85 @@ end
 	end
 	A1 = S
 	A = A0+A1.*F.^n./(K.^n+F.^n)
+	return A
+end
+
+@everywhere function convertToROTEMPlateletContribution(t,x, tPA,platelet_count)
+	#to work with Differential Equations
+	if(contains(string(typeof(x)), "DiffEqBase"))
+		F = x[12,:]+x[18,:]+ x[19,:]+x[22,:]
+	else
+		F = [a[12] for a in x]#+ [a[18] for a in x]+ [a[19] for a in x]+ [a[22] for a in x] # fibrin related species 12,18,19,22
+	end
+	normal_platelet_count = 300 #*10^6 #/mL
+	A0 = .01 #baseline ROTEM signal
+	K = 5000-375*tPA
+	#K = 1
+	n = 2
+	#for infomration about weights
+	#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4568902/ Assessing the Methodology for Calculating Platelet Contribution to Clot Strength (Platelet Component) in Thromboelastometry and Thrombelastography
+	#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4238905/ FIBRINOGEN AND PLATELET CONTRIBUTIONS TO CLOT FORMATION: IMPLICATIONS FOR TRAUMA RESUSCITATION AND THROMBOPROPHYLAXIS
+
+	wp = .5 #platelet contribution
+	wf = .5 #fibrin related species contribution
+	if(tPA ==2)
+		S = 60
+		#S = 3.5
+	else
+		S = 60
+		#S = 1.5
+	end
+	A1 = S
+	P=platelet_count/normal_platelet_count.*[a[8] for a in x].*[a[12] for a in x]
+#	figure()
+#	plot(t,wf.*F, "r")
+#	plot(t, wp.*P, "g")
+
+	#x[8]-fraction activated platelets
+	R = wf.*F+wp.*P
+	A = A0+A1.*R.^n./(K.^n+R.^n)
+	return A
+end
+
+@everywhere function convertToROTEMPlateletContributionScaledF(t,x, tPA,platelet_count,F0)
+	#to work with Differential Equations
+	if(contains(string(typeof(x)), "DiffEqBase"))
+		F = x[12,:]+x[18,:]+ x[19,:]+x[22,:]
+	else
+		F = [a[12] for a in x]+ [a[18] for a in x]+ [a[19] for a in x]+ [a[22] for a in x] # fibrin related species 12,18,19,22
+	end
+	normal_platelet_count = 300 #*10^6 #/mL
+	A0 = .01 #baseline ROTEM signal
+	K = 5000.0-375*tPA
+	#K = 1
+	n = 2
+	#for infomration about weights
+	#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4568902/ Assessing the Methodology for Calculating Platelet Contribution to Clot Strength (Platelet Component) in Thromboelastometry and Thrombelastography
+	#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4238905/ FIBRINOGEN AND PLATELET CONTRIBUTIONS TO CLOT FORMATION: IMPLICATIONS FOR TRAUMA RESUSCITATION AND THROMBOPROPHYLAXIS
+
+	wp = 1/30 #platelet contribution
+	wf =0.0 #fibrin related species contribution
+	if(tPA ==2)
+		S = 60
+		#S = 3.5
+	else
+		S = 60
+		#S = 1.5
+	end
+	A1 = S
+	#x[8]-fraction activated platelets
+	@show minimum(F)
+	@show maximum(F)
+	P = platelet_count/normal_platelet_count.*[a[8] for a in x].*F
+	@show minimum(P)
+	@show maximum(P)
+	figure()
+	plot(t,F*wf)
+	plot(t,wp*P)
+
+	#R = wf.*F+wp.*P
+	#A = A0+A1.*R.^n./(K.^n+R.^n)
+	A = P*wp
 	return A
 end
 
@@ -596,7 +721,8 @@ function makeTrainingFigure()
 	numParamSets = 15
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
-			savestr = string("figures/Patient", ids[j], "_tPA=", tPAs[k], "_18_04_2017.pdf")
+			#savestr = string("figures/Patient", ids[j], "_tPA=", tPAs[k], "_18_04_2017.pdf")
+			savestr = string("figures/Patient", ids[j], "_tPA=", tPAs[k], "_26_03_2018.pdf")
 			bestparams=generateNbestGivenObjective(numParamSets,ec, pc,counter)
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParams(bestparams, ids[j], tPAs[k], savestr)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
@@ -642,6 +768,139 @@ function makeTrainingFigure()
                va="top", fontsize = 24, family = "sans-serif")
 
 	savefig(string("figures/trainingFigureUsing",numParamSets, "ParameterSets_22_05_17OriginalShapeFunction.pdf"))
+end
+
+function makeTrainingFigurePlatletContributionToROTEM()
+	font2 = Dict("family"=>"sans-serif",
+	    "color"=>"black",
+	    "weight"=>"normal",
+	    "size"=>20)
+	close("all")
+	#POETs_data = "../parameterEstimation/POETS_info_28_03_18_PlateletContributionToROTEM.txt"
+	#POETs_data="../parameterEstimation/POETS_info_05_04_18_PlateletContributionToROTEM.txt"
+	POETs_data ="../parameterEstimation/POETS_info_11_04_18_PlateletContributionToROTEM.txt"
+	ec,pc,ra=parsePOETsoutput(POETs_data)
+	ids = [5,6,7,8]
+	tPAs = [0,2]
+	close("all")
+	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
+	counter = 1
+	numParamSets = 2
+	for j in collect(1:size(ids,1))
+		for k in collect(1:size(tPAs,1))
+			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_28_03_2018.pdf")
+			bestparams=generateNbestPerObjective(numParamSets,ec,pc)
+			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParams(bestparams, ids[j], tPAs[k], savestr)
+			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
+			@show counter
+			curraxis=axarr[j,k]
+			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
+			curraxis[:plot](TSIM, transpose(meanROTEM), "k")
+			upper = transpose(meanROTEM+stdROTEM)
+			lower = transpose(meanROTEM-stdROTEM)
+			curraxis[:fill_between]((TSIM), vec(upper), vec(lower), color = ".5", alpha =.5)
+			curraxis[:plot](expdata[:,1], expdata[:,2], ".k")
+			if(mod(counter,2)==1)
+				curraxis[:set_ylim](0, 70)
+				curraxis[:set_xlim](0,TSIM[end])
+				curraxis[:set_ylabel](string("Patient ", ids[j]), fontdict=font2)
+			else
+				axis([0, TSIM[end], 0, 90])
+			end
+
+			if(counter==7 || counter ==8)
+				xlabel("Time, in minutes", fontdict = font2)
+			else
+				ax =gca()
+				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
+			end
+			counter=counter+1
+		end
+	end
+	#label columns
+	figure(1)
+	annotate("tPA = 0 micromolar",
+               xy=[.12;.95],
+               xycoords="figure fraction",
+               xytext=[.39,0.95],
+               textcoords="figure fraction",
+               ha="right",
+               va="top", fontsize = 24, family = "sans-serif")
+	annotate("tPA = 2 micromolar",
+               xy=[.12;.95],
+               xycoords="figure fraction",
+               xytext=[.85,0.95],
+               textcoords="figure fraction",
+               ha="right",
+               va="top", fontsize = 24, family = "sans-serif")
+
+	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_11_04_18PlatletContributionToROTEMICAdjustmentBest2PerObj.pdf"))
+end
+
+function makeTrainingFigurePolymerizedPlatelets()
+	font2 = Dict("family"=>"sans-serif",
+	    "color"=>"black",
+	    "weight"=>"normal",
+	    "size"=>20)
+	close("all")
+	#POETs_data = "../parameterEstimation/POETS_info_28_03_18_PlateletContributionToROTEM.txt"
+	POETs_data="../parameterEstimation/POETS_info_09_04_18_PlateletContributionToROTEMDiffROTEM.txt"
+	ec,pc,ra=parsePOETsoutput(POETs_data)
+	ids = [5,6,7,8]
+	tPAs = [0,2]
+	close("all")
+	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
+	counter = 1
+	numParamSets = 2
+	for j in collect(1:size(ids,1))
+		for k in collect(1:size(tPAs,1))
+			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_28_03_2018.pdf")
+			bestparams=generateNbestPerObjective(numParamSets,ec,pc)
+			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParams(bestparams, ids[j], tPAs[k], savestr)
+			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
+			@show counter
+			curraxis=axarr[j,k]
+			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
+			curraxis[:plot](TSIM, transpose(meanROTEM), "k")
+			upper = transpose(meanROTEM+stdROTEM)
+			lower = transpose(meanROTEM-stdROTEM)
+			curraxis[:fill_between]((TSIM), vec(upper), vec(lower), color = ".5", alpha =.5)
+			curraxis[:plot](expdata[:,1], expdata[:,2], ".k")
+			if(mod(counter,2)==1)
+				curraxis[:set_ylim](0, 70)
+				curraxis[:set_xlim](0,TSIM[end])
+				curraxis[:set_ylabel](string("Patient ", ids[j]), fontdict=font2)
+			else
+				axis([0, TSIM[end], 0, 90])
+			end
+
+			if(counter==7 || counter ==8)
+				xlabel("Time, in minutes", fontdict = font2)
+			else
+				ax =gca()
+				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
+			end
+			counter=counter+1
+		end
+	end
+	#label columns
+	figure(1)
+	annotate("tPA = 0 micromolar",
+               xy=[.12;.95],
+               xycoords="figure fraction",
+               xytext=[.39,0.95],
+               textcoords="figure fraction",
+               ha="right",
+               va="top", fontsize = 24, family = "sans-serif")
+	annotate("tPA = 2 micromolar",
+               xy=[.12;.95],
+               xycoords="figure fraction",
+               xytext=[.85,0.95],
+               textcoords="figure fraction",
+               ha="right",
+               va="top", fontsize = 24, family = "sans-serif")
+
+	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_09_04_18_polymerizedPlateletsBest2PerObj.pdf"))
 end
 
 function makeTrainingFigureBestOveralParams()
@@ -722,7 +981,7 @@ function makePredictionsFigure()
 			datasavestr = string("../generatedData/Patient", ids[j],"_tPA=", tPAs[k], "_28_11_2017.txt" )
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicition(pathToParams, ids[j], tPAs[k], savestr)
 			println("For patient", ids[j], "with ", tPAs[k], "tPA")
-			calculateCommonMetrics(meanROTEM,TSIM)
+			@show CT,CFT,alpha,MCF,A10,A20,LI30,LI60=calculateCommonMetrics(meanROTEM,TSIM)
 			writetodisk= hcat(TSIM, transpose(meanROTEM), transpose(stdROTEM))
 			writedlm(datasavestr, writetodisk)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
@@ -774,6 +1033,140 @@ function makePredictionsFigure()
 	savefig("../figures/PredictionsFigureUsingBest2ParamSetPerObj_31_05_17OriginalShapeFunctionOnlyFittPA95Percent.pdf")
 end
 
+function makePredictionFigurePlatletContributionToROTEM()
+	font2 = Dict("family"=>"sans-serif",
+	    "color"=>"black",
+	    "weight"=>"normal",
+	    "size"=>20)
+	close("all")
+	#POETs_data = "../parameterEstimation/POETS_info_28_03_18_PlateletContributionToROTEM.txt"
+	#POETs_data="../parameterEstimation/POETS_info_05_04_18_PlateletContributionToROTEM.txt"
+	#POETs_data ="../parameterEstimation/POETS_info_19_04_18_PlateletContributionToROTEM.txt"
+	POETs_data="../parameterEstimation/POETS_info_09_04_18_PlateletContributionToROTEMDiffROTEM.txt"
+	ec,pc,ra=parsePOETsoutput(POETs_data)
+	ids = [3,4,9,10]
+	tPAs = [0,2]
+	close("all")
+	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
+	counter = 1
+	numParamSets = 2
+	for j in collect(1:size(ids,1))
+		for k in collect(1:size(tPAs,1))
+			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "WithICAdjustment_18_04_2018.pdf")
+			bestparams=generateNbestPerObjective(numParamSets,ec,pc, "../parameterEstimation/Best8paramsPlateletContributionToROTEM_09_04_18.txt")
+			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParams(bestparams, ids[j], tPAs[k], savestr)
+			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
+			@show counter
+			curraxis=axarr[j,k]
+			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
+			curraxis[:plot](TSIM, transpose(meanROTEM), "k")
+			upper = transpose(meanROTEM+stdROTEM)
+			lower = transpose(meanROTEM-stdROTEM)
+			curraxis[:fill_between]((TSIM), vec(upper), vec(lower), color = ".5", alpha =.5)
+			curraxis[:plot](expdata[:,1], expdata[:,2], ".k")
+			if(mod(counter,2)==1)
+				curraxis[:set_ylim](0, 70)
+				curraxis[:set_xlim](0,TSIM[end])
+				curraxis[:set_ylabel](string("Patient ", ids[j]), fontdict=font2)
+			else
+				axis([0, TSIM[end], 0, 90])
+			end
+
+			if(counter==7 || counter ==8)
+				xlabel("Time, in minutes", fontdict = font2)
+			else
+				ax =gca()
+				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
+			end
+			counter=counter+1
+		end
+	end
+	#label columns
+	figure(1)
+	annotate("tPA = 0 micromolar",
+               xy=[.12;.95],
+               xycoords="figure fraction",
+               xytext=[.39,0.95],
+               textcoords="figure fraction",
+               ha="right",
+               va="top", fontsize = 24, family = "sans-serif")
+	annotate("tPA = 2 micromolar",
+               xy=[.12;.95],
+               xycoords="figure fraction",
+               xytext=[.85,0.95],
+               textcoords="figure fraction",
+               ha="right",
+               va="top", fontsize = 24, family = "sans-serif")
+
+	savefig(string("../figures/PredictionsFigureUsing",numParamSets, "ParameterSets_18_04_18PlatletContributionToROTEMWithICAdjustment.pdf"))
+end
+
+function makePredictionFigurePolymerizedPlatelets()
+	font2 = Dict("family"=>"sans-serif",
+	    "color"=>"black",
+	    "weight"=>"normal",
+	    "size"=>20)
+	close("all")
+	#POETs_data = "../parameterEstimation/POETS_info_28_03_18_PlateletContributionToROTEM.txt"
+	POETs_data="../parameterEstimation/POETS_info_09_04_18_PlateletContributionToROTEMDiffROTEM.txt"
+	ec,pc,ra=parsePOETsoutput(POETs_data)
+	ids = [3,4,9,10]
+	tPAs = [0,2]
+	close("all")
+	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
+	counter = 1
+	numParamSets = 2
+	for j in collect(1:size(ids,1))
+		for k in collect(1:size(tPAs,1))
+			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_28_03_2018.pdf")
+			bestparams=generateNbestPerObjective(numParamSets,ec,pc)
+			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParams(bestparams, ids[j], tPAs[k], savestr)
+			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
+			@show counter
+			curraxis=axarr[j,k]
+			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
+			curraxis[:plot](TSIM, transpose(meanROTEM), "k")
+			upper = transpose(meanROTEM+stdROTEM)
+			lower = transpose(meanROTEM-stdROTEM)
+			curraxis[:fill_between]((TSIM), vec(upper), vec(lower), color = ".5", alpha =.5)
+			curraxis[:plot](expdata[:,1], expdata[:,2], ".k")
+			if(mod(counter,2)==1)
+				curraxis[:set_ylim](0, 70)
+				curraxis[:set_xlim](0,TSIM[end])
+				curraxis[:set_ylabel](string("Patient ", ids[j]), fontdict=font2)
+			else
+				axis([0, TSIM[end], 0, 90])
+			end
+
+			if(counter==7 || counter ==8)
+				xlabel("Time, in minutes", fontdict = font2)
+			else
+				ax =gca()
+				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
+			end
+			counter=counter+1
+		end
+	end
+	#label columns
+	figure(1)
+	annotate("tPA = 0 micromolar",
+               xy=[.12;.95],
+               xycoords="figure fraction",
+               xytext=[.39,0.95],
+               textcoords="figure fraction",
+               ha="right",
+               va="top", fontsize = 24, family = "sans-serif")
+	annotate("tPA = 2 micromolar",
+               xy=[.12;.95],
+               xycoords="figure fraction",
+               xytext=[.85,0.95],
+               textcoords="figure fraction",
+               ha="right",
+               va="top", fontsize = 24, family = "sans-serif")
+
+	savefig(string("../figures/PredictionFigureUsing",numParamSets, "ParameterSets_09_04_18_polymerizedPlateletsBest2PerObj.pdf"))
+end
+
 function testROTEMPredicitionGivenParams(allparams,patient_id,tPA,savestr)
 	numparams = 77
 	pathToThrombinData="../data/fromOrfeo_Thrombin_BL_PRP.txt"
@@ -810,7 +1203,7 @@ function testROTEMPredicitionGivenParams(allparams,patient_id,tPA,savestr)
 		initial_condition_vector[16]=tPA #set tPA level
 		initial_condition_vector=setCompleteModelIC(initial_condition_vector,patient_id)
 		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
-		fbalances(t,y)= BalanceEquations(t,y,dict)
+		fbalances(t,y)= Balances(t,y,dict)
 		tic() 
 		t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
 		toc()	
@@ -826,7 +1219,109 @@ function testROTEMPredicitionGivenParams(allparams,patient_id,tPA,savestr)
 	return alldata, meanROTEM, stdROTEM, TSIM
 end
 
+function testROTEMPredicitionGivenParamsPlatetContributionToROTEM(allparams,patient_id,tPA,savestr)
+	numparams = 77
+	pathToThrombinData="../data/fromOrfeo_Thrombin_BL_PRP.txt"
+	TSTART = 0.0
+	Ts = .02
+	if(tPA==0)
+		TSTOP =180.0
+	else
+		TSTOP = 100.0
+	end
+	TSIM = collect(TSTART:Ts:TSTOP)
+	platelets,usefuldata = setROTEMIC(tPA, patient_id)
+	platelet_count =platelets
+	alldata = zeros(1,size(TSIM,1))
+	if(size(allparams,1)==numparams) #deal with parameters being stored either vertically or horizontally
+		itridx = 2
+	else
+		itridx = 1
+	end
+	
+	for j in collect(1:size(allparams,itridx))
+		if(itridx ==2)
+			currparams = vec(allparams[:,j])
+		else
+			currparams = vec(allparams[j,:])
+		end
+		#@show currparams
+		if(typeof(currparams)==Array{Array,1}) #deal with params being inside an extra layer of array
+			currparams= currparams[1]
+		end
+		currparams[47]=platelet_count
+		dict = buildCompleteDictFromOneVector(currparams)
+		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
+		initial_condition_vector[16]=tPA #set tPA level
+		initial_condition_vector=setCompleteModelIC(initial_condition_vector,patient_id)
+		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
+		fbalances(t,y)= Balances(t,y,dict)
+		tic() 
+		t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
+		toc()	
+		#@show size([a[2] for a in X])
+		A = convertToROTEMPlateletContribution(t,X,tPA,platelet_count)
+		alldata=vcat(alldata,transpose(A))
+	end
+	alldata = alldata[2:end, :] #remove row of zeros
+	alldata = map(Float64,alldata)
+	meanROTEM = mean(alldata,1)
+	stdROTEM = std(alldata,1)
+	plotAverageROTEMWData(TSIM, meanROTEM, stdROTEM, usefuldata,savestr)
+	return alldata, meanROTEM, stdROTEM, TSIM
+end
 
+function testROTEMPredicitionGivenParamsPolymerizedPlatelets(allparams,patient_id,tPA,savestr)
+	numparams = 77
+	pathToThrombinData="../data/fromOrfeo_Thrombin_BL_PRP.txt"
+	TSTART = 0.0
+	Ts = .02
+	if(tPA==0)
+		TSTOP =180.0
+	else
+		TSTOP = 100.0
+	end
+	TSIM = collect(TSTART:Ts:TSTOP)
+	platelets,usefuldata = setROTEMIC(tPA, patient_id)
+	platelet_count =platelets
+	alldata = zeros(1,size(TSIM,1))
+	if(size(allparams,1)==numparams) #deal with parameters being stored either vertically or horizontally
+		itridx = 2
+	else
+		itridx = 1
+	end
+	
+	for j in collect(1:size(allparams,itridx))
+		if(itridx ==2)
+			currparams = vec(allparams[:,j])
+		else
+			currparams = vec(allparams[j,:])
+		end
+		#@show currparams
+		if(typeof(currparams)==Array{Array,1}) #deal with params being inside an extra layer of array
+			currparams= currparams[1]
+		end
+		currparams[47]=platelet_count
+		dict = buildCompleteDictFromOneVector(currparams)
+		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
+		initial_condition_vector[16]=tPA #set tPA level
+		initial_condition_vector=setCompleteModelIC(initial_condition_vector,patient_id)
+		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
+		fbalances(t,y)= Balances(t,y,dict)
+		tic() 
+		t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
+		toc()	
+		#@show size([a[2] for a in X])
+		A =  convertToROTEMPlateletContributionScaledF(t,X,tPA,platelet_count, initial_condition_vector[14])
+		alldata=vcat(alldata,transpose(A))
+	end
+	alldata = alldata[2:end, :] #remove row of zeros
+	alldata = map(Float64,alldata)
+	meanROTEM = mean(alldata,1)
+	stdROTEM = std(alldata,1)
+	plotAverageROTEMWData(TSIM, meanROTEM, stdROTEM, usefuldata,savestr)
+	return alldata, meanROTEM, stdROTEM, TSIM
+end
 
 function testROTEMPredicition(pathToParams,patient_id,tPA,savestr)
 	numparams = 77
@@ -837,7 +1332,7 @@ function testROTEMPredicition(pathToParams,patient_id,tPA,savestr)
 	if(tPA==0)
 		TSTOP =180.0
 	else
-		TSTOP = 60.0
+		TSTOP = 100.0
 	end
 	TSIM = collect(TSTART:Ts:TSTOP)
 	platelets,usefuldata = setROTEMIC(tPA, patient_id)
@@ -858,7 +1353,7 @@ function testROTEMPredicition(pathToParams,patient_id,tPA,savestr)
 		else
 			currparams = vec(allparams[j,:])
 		end
-		@show currparams
+		#@show currparams
 		currparams[47]=platelet_count
 		dict = buildCompleteDictFromOneVector(currparams)
 		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
@@ -916,12 +1411,12 @@ function testROTEMPredicitionAndPlot(pathToParams,patient_id,tPA,savestr)
 		else
 			currparams = vec(allparams[j,:])
 		end
-		@show currparams
+		#@show currparams
 		currparams[47]=platelet_count
 		dict = buildCompleteDictFromOneVector(currparams)
 		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
 		initial_condition_vector[16]=tPA #set tPA level
-		@show dict
+		#@show dict
 		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
 		fbalances(t,y)= BalanceEquations(t,y,dict)
 		tic() 
@@ -936,7 +1431,7 @@ function testROTEMPredicitionAndPlot(pathToParams,patient_id,tPA,savestr)
 		A = convertToROTEM(t,X,tPA)
 		figure(3)
 		plot(t, A)
-		@show size(A)
+		#@show size(A)
 		alldata=vcat(alldata,transpose(A))
 	end
 	alldata = alldata[2:end, :] #remove row of zeros
@@ -975,12 +1470,66 @@ function generateAvgROTEMCurve(patient_id,tPA, IC_to_alter)
 		else
 			currparams = vec(allparams[j,:])
 		end
-		@show currparams
+		#@show currparams
 		currparams[47]=platelet_count
 		dict = buildCompleteDictFromOneVector(currparams)
 		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
 		initial_condition_vector[16]=tPA #set tPA level
 		initial_condition_vector =alterIC(initial_condition_vector,IC_to_alter)
+		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
+		fbalances(t,y)= BalanceEquations(t,y,dict)
+		tic() 
+		t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
+		toc()	
+		A = convertToROTEM(t,X,tPA)
+		alldata=vcat(alldata,transpose(A))
+	end
+	alldata = alldata[2:end, :] #remove row of zeros
+	alldata = map(Float64,alldata)
+	meanROTEM = mean(alldata,1)
+	stdROTEM = std(alldata,1)
+	return alldata, meanROTEM, stdROTEM, TSIM
+end
+
+function generateAvgROTEMCurvePeturbPairwise(patient_id,tPA, IC_to_alter, params_to_alter)
+	pathToParams="../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt"
+	numparams = 77
+	allparams = readdlm(pathToParams, '\t')
+	pathToThrombinData="../data/fromOrfeo_Thrombin_HT_PRP.txt"
+	TSTART = 0.0
+	Ts = .02
+	if(tPA==0)
+		TSTOP =180.0
+	else
+		TSTOP = 60.0
+	end
+	TSIM = collect(TSTART:Ts:TSTOP)
+	platelets,usefuldata = setROTEMIC(tPA, patient_id)
+	platelet_count =platelets
+	alldata = zeros(1,size(TSIM,1))
+	if(size(allparams,1)==numparams) #deal with parameters being stored either vertically or horizontally
+		itridx = 2
+	else
+		itridx = 1
+	end
+	
+	for j in collect(1:size(allparams,itridx))
+		if(itridx ==2)
+			currparams = vec(allparams[:,j])
+		else
+			currparams = vec(allparams[j,:])
+		end
+		#@show currparams
+		currparams[47]=platelet_count
+		#we're going to perturb 5x params-params to alter should be 2 long
+		currparams[params_to_alter[1]] = currparams[params_to_alter[1]]*5
+		currparams[params_to_alter[2]] = currparams[params_to_alter[2]]*5	
+
+		dict = buildCompleteDictFromOneVector(currparams)
+		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
+		initial_condition_vector[16]=tPA #set tPA level
+		initial_condition_vector =alterIC(initial_condition_vector,IC_to_alter)
+
 		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
 		fbalances(t,y)= BalanceEquations(t,y,dict)
 		tic() 
@@ -1003,6 +1552,42 @@ function characterizeCurve(patient_id,tPA)
 	toc()
 	calculateCommonMetrics(meanROTEM,TSIM)
 	return alldata, meanROTEM, stdROTEM, TSIM
+end
+
+function doPairwisePeturb()
+	IC_to_alter = Dict()
+	#generate nominal case
+	startingpt =  readdlm("../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt")
+	best = mean(startingpt,1)
+	@show size(best)
+	t,ROTEM_n = runModelWithParamsSetICReturnROTEM(best)
+	numparams = 77
+	alldistances = zeros(numparams, numparams)
+	peturbAmount = 5.0
+	for j in collect(1:1:numparams)
+		currparams = best
+		currparams[j] = best[j]*peturbAmount
+		for k in collect(1:1:numparams)
+			currparams[k] = best[k]*peturbAmount
+			println("On pair ", j, " and ", k)
+			#alldata, meanROTEM, stdROTEM, TSIM=generateAvgROTEMCurvePeturbPairwise(patient_id,tPA,IC_to_alter, [j,k])
+			t,ROTEM = runModelWithParamsSetICReturnROTEM(currparams)
+			@show size(ROTEM)
+			@show size(ROTEM_n)
+			if(size(ROTEM,1)==size(ROTEM_n,1))	
+				currdist = evaluate(Euclidean(), ROTEM_n, ROTEM)
+			else
+				#if we've had an error in solving ODEs, probably'
+				currdist = -1
+			end
+			@show currdist
+			alldistances[j,k]=currdist
+			#unpeturb this param
+			currparams[k] = best[k]*1/peturbAmount
+		end
+	end
+	writedlm("../generatedData/peturbParams_12_12_17_5x.txt", alldistances)
+	return alldistances
 end
 
 function characterizeCurve(patient_id,tPA,IC_to_alter)
@@ -1099,6 +1684,7 @@ end
 function alterIC(IC, dict_to_alter)
 	#will multiply selected IC in dict_to_alter by the amount specified in the dict
 	nameIdxDict = createSpeciesNameIdxDict()
+	#@show nameIdxDict
 	for key in keys(dict_to_alter)
 		IC[nameIdxDict[key]] = IC[nameIdxDict[key]]*dict_to_alter[key] 
 	end
@@ -1192,16 +1778,57 @@ function generateSobolParamsForOnlyPerturbIC()
 	close(f)
 end
 
-function concatSobolResults()
-	filestr1 = "../sensitivity/05_31_17_AUCForSobolPM50PercentN5000_"
-	filestr2="_of_8.txt"
+function generateSobolParamsForOnlyPeturbFibrin()
+	#let's use the averaged top 8 parameter sets
+	startingpt =  readdlm("../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt")
+	outputfn="../sensitivity/sobolboundspm50percentOnlyFibrin_05_12_17.txt"
+	best = mean(startingpt,1)
+	data_dictionary=buildCompleteDictFromOneVector(best)
+	names = data_dictionary["parameter_name_mapping_array"]
+	initial_conditions = data_dictionary["INITIAL_CONDITION_VECTOR"]
+	IC_names = ["Fibrin", "Plasmin", "Fibrinogen", "Plasminogen", "tPA", "uPA", "Fibrin_Monomer", "Protofibril", "Antiplasmin", "PAI1", "Fiber"]
 	str = ""
-	for j in collect(1:8)
+	j = 1
+	selectedIdxs = vcat(collect(39:44), collect(48:77)) #params related to fibrin generation and degredation
+	for name in names
+		if j in selectedIdxs
+			currstr = string(name, " ", best[j]*.5, " ", best[j]*1.5, "\n")
+			str = string(str,currstr)
+		end
+		j=j+1
+	end
+
+	j = 12
+	for name in IC_names
+		if(initial_conditions[j]==0)
+			lb = 0.0
+			up = 1.0
+		else
+			lb = initial_conditions[j]*.5
+			up = initial_conditions[j]*1.5
+		end
+		currstr = string("initial_", name, " ", lb, " ", up, "\n")
+		str = string(str, currstr)
+		j = j+1
+	end
+	touch(outputfn)
+	f = open(outputfn, "a")
+	write(f,str)
+	close(f)
+	
+end
+
+function concatSobolResults()
+	filestr1 = "../sensitivity/09_02_18_MetricsForSobolPM50PercentOnlyICN2000_" #change me
+	filestr2="_of_4.txt"
+	str = ""
+	for j in collect(1:4)
 		fn = string(filestr1, j, filestr2)
+		#currstr = readstring(fn)
 		currstr = replace(readstring(fn), ",", " ")
 		str = string(str, currstr)
 	end
-	write("../sensitivity/AllSobol_05_31_17_AUCForSobolParamsAndICPM50PercentN5000.txt", str)
+	write("../sensitivity/AllSobol_09_02_18_MetricsForSobolPM50PercentOnlyICN2000.txt", str) #and me
 end
 
 function checkThermoFeasability(params)
@@ -1279,8 +1906,9 @@ function checkThermoFeasability(params)
 	
 end
 
-function calculateCT(ROTEM_curve,TSIM)
+@everywhere function calculateCT(ROTEM_curve,TSIM)
 	#CT-when we first see an increase in diameter to 2mm
+	#for TEG data, R value
 	j = 1
 	cutoff = 2
 	CT = -1
@@ -1295,12 +1923,17 @@ function calculateCT(ROTEM_curve,TSIM)
 	return CT*60
 end
 
-function calculateCFT(ROTEM_curve,TSIM)
+@everywhere function calculateCFT(ROTEM_curve,TSIM)
 	#difference between CT and how long it takes to get to 20mm
+	#for TEG data, no equivalent
 	CT = calculateCT(ROTEM_curve,TSIM)
 	cutoff = 20.0
 	j =1
 	T20 = -1
+	if(maximum(ROTEM_curve)<20) #if we never got to 20 mm
+		CFT = -1
+		return CFT
+	end
 	while(j<maximum(size(ROTEM_curve)))
 		if(ROTEM_curve[j]>cutoff)
 			T20 = TSIM[j] #this is in minutes
@@ -1313,16 +1946,20 @@ function calculateCFT(ROTEM_curve,TSIM)
 	return CFT
 end
 
-function calculateAlpha(ROTEM_curve,TSIM)
+@everywhere function calculateAlpha(ROTEM_curve,TSIM)
+	#for TEG, equivalent to calculating angle/alpha
 	CFT = calculateCFT(ROTEM_curve,TSIM)
+	if(CFT ==-1) #if we've not reached 20 mm
+		alpha = -1 #give a nonsense result
+	end
 
 	#since we know CT is at 2mm and CFT is at 20mm, we can calculate the slope-this slope is in minutes
-	slope = (20-2)./(CFT*60)
+	slope = (20-2)/(CFT)*360/(2*pi) #need to convert to degrees
 	alpha = atand(slope)#draw a picture-this works
 	return alpha
 end
 
-function calculateFirmnessAtTime(ROTEM_curve,TSIM,tdesired)
+@everywhere function calculateFirmnessAtTime(ROTEM_curve,TSIM,tdesired)
 	j =1
 	firmness = -1
 	while(j<maximum(size(ROTEM_curve)))
@@ -1335,7 +1972,8 @@ function calculateFirmnessAtTime(ROTEM_curve,TSIM,tdesired)
 	return firmness
 end
 
-function calculateMCF(ROTEM_curve,TSIM)
+@everywhere function calculateMCF(ROTEM_curve,TSIM)
+	#for TEG, MA
 	j = 1
 	MCF = -1
 	while(j<maximum(size(ROTEM_curve)))
@@ -1347,7 +1985,7 @@ function calculateMCF(ROTEM_curve,TSIM)
 	return MCF
 end
 
-function calculateLysisAtTime(ROTEM_curve,TSIM,tdesired)
+@everywhere function calculateLysisAtTime(ROTEM_curve,TSIM,tdesired)
 	MCF = calculateMCF(ROTEM_curve,TSIM)
 	later_firmess = calculateFirmnessAtTime(ROTEM_curve,TSIM,tdesired)
 	LI = (later_firmess)/MCF #since this is expressed as a percent
@@ -1357,7 +1995,7 @@ function calculateLysisAtTime(ROTEM_curve,TSIM,tdesired)
 	return LI
 end
 
-function calculateCommonMetrics(ROTEM_curve,TSIM)
+@everywhere function calculateCommonMetrics(ROTEM_curve,TSIM)
 	CT = calculateCT(ROTEM_curve,TSIM)
 	CFT = calculateCFT(ROTEM_curve,TSIM)
 	alpha = calculateAlpha(ROTEM_curve, TSIM)
@@ -1366,14 +2004,14 @@ function calculateCommonMetrics(ROTEM_curve,TSIM)
 	A20 = calculateFirmnessAtTime(ROTEM_curve,TSIM,20)
 	LI30 = calculateLysisAtTime(ROTEM_curve,TSIM,30)
 	LI60 = calculateLysisAtTime(ROTEM_curve,TSIM,60)
-	println("CT: ", CT, " seconds")
-	println("CFT: ", CFT, " seconds")
-	println("alpha: ",alpha, " degrees")
-	println("MCF: ", MCF, " mm")
-	println("A10: ", A10," mm")
-	println("A20: ",A20," mm")
-	println("LI30: ",LI30, " percent of the MCF remains")
-	println("LI60: ", LI60," percent of the MCF remains")
+#	println("CT: ", CT, " seconds")
+#	println("CFT: ", CFT, " seconds")
+#	println("alpha: ",alpha, " degrees")
+#	println("MCF: ", MCF, " mm")
+#	println("A10: ", A10," mm")
+#	println("A20: ",A20," mm")
+#	println("LI30: ",LI30, " percent of the MCF remains")
+#	println("LI60: ", LI60," percent of the MCF remains")
 	return CT,CFT,alpha,MCF,A10,A20,LI30,LI60
 end
 

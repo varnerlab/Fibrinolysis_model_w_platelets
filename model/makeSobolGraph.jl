@@ -33,6 +33,73 @@ function makeSobolGraphNoAnnotations()
 	savefig("../sensitivity/SobolTotalOrderN5000_05_31_17.pdf", bbox_inches = "tight")
 end
 
+function makeSobolGraphNoAnnotations(metric::AbstractString)
+	#note: N =2000 for 12_2_18
+	font1 = Dict("family"=>"sans-serif",
+	    "color"=>"black",
+	    "weight"=>"normal",
+	    "size"=>24)
+
+	font2 = Dict("family"=>"sans-serif",
+	    "color"=>"black",
+	    "weight"=>"normal",
+	    "size"=>12)
+	close("all")
+	numparams = 22
+	fig=figure(figsize=[35,15])
+	plt[:tight_layout]=true
+	data = readdlm(string("../sensitivity/", metric, "Sensitivity_12_2_18.txt"), ' ')
+	topHalf = data[1:numparams+1, :]
+	usefulData = topHalf[2:end, :]
+	@show usefulData
+	@show size(usefulData)
+	positions = collect(0:numparams-1)
+	#@show usefulData[:,4]
+	bar(positions, usefulData[:,4],color = "k", yerr=usefulData[:,5], align="center")
+	ax = gca()
+	ax[:xaxis][:set_ticks](positions)
+	ylabel("Total Order Sensitivity Indicies", fontdict=font1)
+	axis("tight")
+	axis([0,numparams,0,1.2])
+	ax[:tick_params](labelsize=20)
+	#lines and label for kinetic parameters
+	ax[:xaxis][:set_ticklabels](usefulData[:,1], rotation = 90, fontsize = 14)
+	savefig(string("../sensitivity/", metric, "Sensitivity_12_2_18.pdf"), bbox_inches = "tight")
+end
+
+
+function makeSobolGraphNoAnnotationsFibrin()
+	font1 = Dict("family"=>"sans-serif",
+	    "color"=>"black",
+	    "weight"=>"normal",
+	    "size"=>24)
+
+	font2 = Dict("family"=>"sans-serif",
+	    "color"=>"black",
+	    "weight"=>"normal",
+	    "size"=>12)
+	close("all")
+	numparams = 47
+	fig=figure(figsize=[35,15])
+	plt[:tight_layout]=true
+	data = readdlm("../sensitivity/soboloutputFibrin_06_12_17N1000.txt", ' ')
+	topHalf = data[1:numparams+1, :]
+	@show topHalf
+	usefulData = topHalf[2:end, :]
+	positions = collect(0:numparams-1)
+	@show usefulData[:,4]
+	bar(positions, usefulData[:,4],color = "k", yerr=usefulData[:,5], align="center")
+	ax = gca()
+	ax[:xaxis][:set_ticks](positions)
+	ylabel("Total Order Sensitivity Indicies", fontdict=font1)
+	axis("tight")
+	axis([0,numparams,0,.4])
+	ax[:tick_params](labelsize=20)
+	#lines and label for kinetic parameters
+	ax[:xaxis][:set_ticklabels](usefulData[:,1], rotation = 90, fontsize = 14)
+	savefig("../sensitivity/SobolTotalOrderFibrinN1000_06_12_17.pdf", bbox_inches = "tight")
+end
+
 function makeSobolGraphNoAnnotationsOnlyIC()
 	font1 = Dict("family"=>"sans-serif",
 	    "color"=>"black",

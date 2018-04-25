@@ -1,26 +1,11 @@
-function AdjBalanceEquations(t,x,parameter_index, data_dictionary)
-	@show t
-	number_of_states = 22
-	#partition
-	state_array = x[1:number_of_states]
-	sensitivity_array = x[(number_of_states+1):end]
-	dxdt_total = BalanceEquations(t,state_array, data_dictionary)
+include("CoagulationModelFactory.jl")
+include("utilities.jl")
 
-	#calculate sensitivity states
-	local_data_dictionary = deepcopy(data_dictionary)
-	JM = calculate_jacobian(t,state_array, local_data_dictionary)
-	BM = calculate_bmatrix(t, state_array, local_data_dictionary)
-#	@show size(JM), size(BM), size(sensitivity_array)
-	dsdt_array = JM*sensitivity_array+BM[:, parameter_index]
-	r_array = [dxdt_total; dsdt_array]
-	return r_array
+using DifferentialEquations
+using Plots
 
-end
-
-
-@everywhere function BalanceEquations(t,x,PROBLEM_DICTIONARY)
+function BalanceEquations(dxdt_total,x,p,t)
 	num_rates = 21
-	#@show t
 	# Correct nagative x's = throws errors in control even if small - 
 	idx = find(x->(x<0),x);
 	x[idx] = 0.0;
@@ -55,13 +40,13 @@ end
 	Fiber =x[22] 
 
 	# Grab the kinetic parameetrs from the problem dictionary -
-	kinetic_parameter_vector = PROBLEM_DICTIONARY["KINETIC_PARAMETER_VECTOR"]
-	control_parameter_vector = PROBLEM_DICTIONARY["CONTROL_PARAMETER_VECTOR"]
-	qualitative_factor_level_vector = PROBLEM_DICTIONARY["FACTOR_LEVEL_VECTOR"]
-	platelet_parameter_vector = PROBLEM_DICTIONARY["PLATELET_PARAMS"]
-	timing = PROBLEM_DICTIONARY["TIME_DELAY"]
-	fibrin_kinetic_parameter_vector = PROBLEM_DICTIONARY["FIBRIN_KINETIC_PARAMETER_VECTOR"]
-	fibrin_control_vector = PROBLEM_DICTIONARY["FIBRIN_CONTROL_PARAMETER_VECTOR"]
+	kinetic_parameter_vector = p[1:18]#PROBLEM_DICTIONARY["KINETIC_PARAMETER_VECTOR"]
+	control_parameter_vector = p[19:38]#PROBLEM_DICTIONARY["CONTROL_PARAMETER_VECTOR"]
+	qualitative_factor_level_vector =p[39:46] #PROBLEM_DICTIONARY["FACTOR_LEVEL_VECTOR"]
+	platelet_parameter_vector = p[47:52]#PROBLEM_DICTIONARY["PLATELET_PARAMS"]
+	timing =p[53:54] #PROBLEM_DICTIONARY["TIME_DELAY"]
+	fibrin_kinetic_parameter_vector =p[55:76] #PROBLEM_DICTIONARY["FIBRIN_KINETIC_PARAMETER_VECTOR"]
+	fibrin_control_vector =p[77:84] #PROBLEM_DICTIONARY["FIBRIN_CONTROL_PARAMETER_VECTOR"]
 
 	# Alias the qualitative factors -
 	TFPI = qualitative_factor_level_vector[1]
@@ -119,15 +104,15 @@ end
 	order_uPA_inh_PAI_1=fibrin_control_vector[8]
 
 	#FVIII function
-	FVIII_control = PROBLEM_DICTIONARY["FVIII_CONTROL"]
+	FVIII_control = p[85]#PROBLEM_DICTIONARY["FVIII_CONTROL"]
 
 	#platelet control
 	#update aleph so that it holds the maximum value of FIIa
-	if(FIIa>PROBLEM_DICTIONARY["ALEPH"])
-		PROBLEM_DICTIONARY["ALEPH"]=FIIa
+	if(FIIa>p[86])
+		p[86]=FIIa
 	end
 
-	aleph = PROBLEM_DICTIONARY["ALEPH"]
+	aleph = p[86]
 	faleph = aleph^platelet_pwr/(aleph^platelet_pwr + platelet_denom^platelet_pwr)
 	EpsMax = EpsMax0+(1-EpsMax0)*faleph
 	#@show aleph, falpeh, EpsMax
@@ -161,7 +146,7 @@ end
   # control_term_fibrinolysis_fXIII -
   control_term_fibrinolysis_fXIII  = 1 - ((alpha_fib_inh_fXIII.*FXIII).^order_fib_inh_fXIII)./(1+((alpha_fib_inh_fXIII.*FXIII).^order_fib_inh_fXIII))
 
-    control_vector = ones(1,num_rates)
+    control_vector = Array{typeof(initiation_trigger_term),2}(1,num_rates)
     control_vector[1] = min(initiation_trigger_term,initiation_TFPI_term)
     control_vector[2] = min(inhibition_term,inhibition_term_TFPI)
     control_vector[3] = shutdown_term
@@ -178,6 +163,7 @@ end
     if (control_term_fibrinolysis_fXIII>0.001)
     	control_vector[15] = control_term_fibrinolysis_fXIII
     end
+	#@show control_vector
 
     # Calculate the kinetics -
     k_trigger = kinetic_parameter_vector[1]
@@ -223,11 +209,11 @@ end
 	Km_fibrinogen_deg=fibrin_kinetic_parameter_vector[22]
 	#@show FIIa, FII, PROTHOMBINASE_PLATELETS, FV_FXA
 
-    rate_vector = zeros(1,num_rates)
+    rate_vector =  Array{typeof(initiation_trigger_term),2}(1,num_rates)
 	rate_vector[1] = k_trigger*TRIGGER*(FV_FX/(K_trigger + FV_FX))
 	rate_vector[2] = k_amplification*FIIa*(FII/(K_FII_amplification + FII))
-	rate_vector[3] = k_APC_formation*TM*(Float64(PC)/Float64(K_PC_formation + PC))
-	rate_vector[4] = Float64(k_inhibition_ATIII)*Float64(ATIII)*(Float64(FIIa)^1.26)
+	rate_vector[3] = k_APC_formation*TM*((PC)/(K_PC_formation + PC))
+	rate_vector[4] = (k_inhibition_ATIII)*(ATIII)*((FIIa)^1.26)
 	rate_vector[5] = k_complex*FV_FXA*aida/Eps
 	rate_vector[6] = k_amp_prothombinase*PROTHOMBINASE_PLATELETS*FII/(K_FII_amp_prothombinase + FII)
 	rate_vector[7] = k_amp_active_factors*FV_FXA*FII/(K_amp_active_factors+FII)
@@ -263,20 +249,6 @@ end
 
 	 # modified rate vector -
 	modified_rate_vector = (rate_vector).*(control_vector);
-#	f = open("modifiedratevector.txt", "a+")
-#	writedlm(f, modified_rate_vector)
-#	close(f)
-
-#	f = open("times.txt", "a+")
-#	writedlm(f, t)
-#	close(f)
-
-#	f = open("ratevector.txt", "a+")
-#	writedlm(f, rate_vector)
-#	close(f)
-
-	# calculate dxdt_reaction -
-	dxdt_total = similar(x)
 	
 	dxdt_total[1] = -1*modified_rate_vector[2] -modified_rate_vector[7]-modified_rate_vector[6]	# 1 FII
 	dxdt_total[2] = modified_rate_vector[2] - modified_rate_vector[4]+modified_rate_vector[7]+modified_rate_vector[6]	 # 2 FIIa
@@ -302,9 +274,9 @@ end
 	dxdt_total[21] = -modified_rate_vector[17]-modified_rate_vector[18]-modified_rate_vector[19]   # 17 PAI_1
 	dxdt_total[22] = 1.0*(modified_rate_vector[10]-modified_rate_vector[12]-modified_rate_vector[20])# 18 Fibers
 
-	idx = find(x->(x<0),x);
-	x[idx] = 0.0;
-	dxdt_total[idx]= 0.0
+	#idx = find(x->(x<0),x);
+	#x[idx] = 0.0;
+	#dxdt_total[idx]= 0.0
 
 
 	tau = time_coeff*(1-FIIa/aleph)
@@ -314,14 +286,70 @@ end
 		time_scale = 0.0
 		#@show t, time_scale, time_delaye
 	end
-	idx = find(dxdt_total->(abs(dxdt_total)<1E-25),dxdt_total); #lets make anything less than 1E-9 zero
+	#idx = find(dxdt_total->(abs(dxdt_total)<1E-9),dxdt_total); #lets make anything less than 1E-9 zero
 	#@show idx
-	dxdt_total[idx] = 0.0;
+	#dxdt_total[idx] = 0.0;
 
-	#dxdt_total[1:11]=dxdt_total[1:11].*time_scale
 	dxdt_total = dxdt_total.*time_scale
-	dxdt_total = vec(dxdt_total)
-	#@show typeof(x), typeof(dxdt_total)
-	 return dxdt_total
-
 end
+
+function runSim()
+	tstart = 0.0
+	tend = 35.0
+	PROBLEM_DICTIONARY = buildCoagulationModelDictionary(346.0)
+	initial_condition_vector = PROBLEM_DICTIONARY["INITIAL_CONDITION_VECTOR"]
+	#pull things out of dictionary
+	kinetic_parameter_vector = PROBLEM_DICTIONARY["KINETIC_PARAMETER_VECTOR"]
+	control_parameter_vector = PROBLEM_DICTIONARY["CONTROL_PARAMETER_VECTOR"]
+	qualitative_factor_level_vector = PROBLEM_DICTIONARY["FACTOR_LEVEL_VECTOR"]
+	platelet_parameter_vector = PROBLEM_DICTIONARY["PLATELET_PARAMS"]
+	timing = PROBLEM_DICTIONARY["TIME_DELAY"]
+	fibrin_kinetic_parameter_vector = PROBLEM_DICTIONARY["FIBRIN_KINETIC_PARAMETER_VECTOR"]
+	fibrin_control_vector = PROBLEM_DICTIONARY["FIBRIN_CONTROL_PARAMETER_VECTOR"]
+	FVIII_control = PROBLEM_DICTIONARY["FVIII_CONTROL"]
+	aleph=PROBLEM_DICTIONARY["ALEPH"]
+
+	allparams = vcat(kinetic_parameter_vector,control_parameter_vector,qualitative_factor_level_vector,platelet_parameter_vector,timing,fibrin_kinetic_parameter_vector,fibrin_control_vector, FVIII_control,aleph)
+	#pf = ParameterizedFunction(pf_func, allparams)
+	#prob = ODELocalSensitivityProblem(pf, initial_condition_vector[1:11] , (tstart, tend))
+	#sol = solve(prob,alghints=[:stiff],dt = .02, abstol=1E-6, reltol=1E-6)
+	prob=ODEProblem(BalanceEquations, initial_condition_vector, (tstart,tend), allparams)
+	sol = solve(prob, Tsit5(),reltol=1e-8,abstol=1e-8)
+	Plots.plot(sol)
+	#tpa is 12
+	A = convertToROTEM(sol.t, sol, initial_condition_vector[12])
+	PyPlot.plot(sol.t, A)
+	CT,CFT,alpha,MCF,A10,A20,LI30,LI60=calculateCommonMetrics(A,sol.t)
+	return sol
+end
+
+function runSim(params)
+	tstart = 0.0
+	tend = 35.0
+	PROBLEM_DICTIONARY = buildCompleteDictFromOneVector(params)
+	initial_condition_vector =PROBLEM_DICTIONARY["INITIAL_CONDITION_VECTOR"]
+	#pull things out of dictionary
+	kinetic_parameter_vector = PROBLEM_DICTIONARY["KINETIC_PARAMETER_VECTOR"]
+	control_parameter_vector = PROBLEM_DICTIONARY["CONTROL_PARAMETER_VECTOR"]
+	qualitative_factor_level_vector = PROBLEM_DICTIONARY["FACTOR_LEVEL_VECTOR"] #this is actually set, not adjustable, but need to feed it in
+	platelet_parameter_vector = PROBLEM_DICTIONARY["PLATELET_PARAMS"]
+	timing = PROBLEM_DICTIONARY["TIME_DELAY"]
+	fibrin_kinetic_parameter_vector = PROBLEM_DICTIONARY["FIBRIN_KINETIC_PARAMETER_VECTOR"]
+	fibrin_control_vector = PROBLEM_DICTIONARY["FIBRIN_CONTROL_PARAMETER_VECTOR"]
+	FVIII_control = PROBLEM_DICTIONARY["FVIII_CONTROL"]
+	aleph=PROBLEM_DICTIONARY["ALEPH"]
+
+	allparams = vcat(kinetic_parameter_vector,control_parameter_vector,qualitative_factor_level_vector,platelet_parameter_vector,timing,fibrin_kinetic_parameter_vector,fibrin_control_vector, FVIII_control,aleph)
+	#pf = ParameterizedFunction(pf_func, allparams)
+	#prob = ODELocalSensitivityProblem(pf, initial_condition_vector[1:11] , (tstart, tend))
+	#sol = solve(prob,alghints=[:stiff],dt = .02, abstol=1E-6, reltol=1E-6)
+	prob=ODEProblem(BalanceEquations, initial_condition_vector, (tstart,tend), allparams)
+	sol = solve(prob,  CVODE_BDF(method=:Functional),reltol=1e-8,abstol=1e-8, dtmax=1.0,saveat = 0.01)
+	Plots.plot(sol)
+	#tpa is 12
+	A = convertToROTEM(sol.t, sol, initial_condition_vector[12])
+	PyPlot.plot(sol.t, A)
+	@show CT,CFT,alpha,MCF,A10,A20,LI30,LI60=calculateCommonMetrics(A,sol.t)
+	return sol
+end
+
