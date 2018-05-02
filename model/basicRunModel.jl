@@ -81,6 +81,8 @@ function basicRunModel(params)
 	plotFibrinSpecies(t,X)
 	A = convertToROTEMPlateletContribution(t,X,tPA,curr_platelets)
 	#A = convertToROTEMPlateletContributionScaledF(t,X,tPA,curr_platelets, initial_condition_vector[14])
+	MSE, interpData = calculateMSE(t,A, usefulROTEMdata)
+	@show MSE
 	figure()
 	plot(t, A)
 	plot(usefulROTEMdata[:,1], usefulROTEMdata[:,2], "k.")

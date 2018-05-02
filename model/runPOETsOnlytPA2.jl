@@ -105,6 +105,7 @@ function objectiveForPOETSPlatletContribution(parameter_array)
 		#t,X = ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep=1E-9)
 		t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0)
 		FIIa = [a[2] for a in X]
+		fibrinogen = [a[14] for a in X]
 		A = convertToROTEMPlateletContribution(t,X,tPA,all_platelets[j])
 		hasdynamics=checkForDynamics(FIIa, t)
 		if(hasdynamics)
@@ -113,6 +114,13 @@ function objectiveForPOETSPlatletContribution(parameter_array)
 		else
 			MSE =10^7 #if it doesn't generate dynamics, make this parameter set very unfavorable
 		end
+		#check to make sure we used up fibrinogen, penalize if we haven't
+		if(fibrinogen[end]<100)
+			MSE, interpData = calculateMSE(t,A, allexperimentaldata[j])
+		else
+			MSE = 10^7
+		end
+
 		@show myid(), count,MSE
 		obj_array[findin(selected_idxs,j),1]=MSE
 		count = count+1
@@ -212,8 +220,9 @@ function attemptOptimizationPOETSOnlytPA2PlateletContribution()
 	#initial_parameter_estimate = vec(readdlm("../parameterEstimation/meanParamsStartPoint_05_04_18.txt"))
 	#initial_parameter_estimate=vec(readdlm("../parameterEstimation/useUpFibrinogen_04_11_18.txt"))
 	#initial_parameter_estimate = vec(readdlm("../parameterEstimation/startingPoint_19_4_18.txt"))
-	initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_25_04_18.txt"))
-	outputfile = "../parameterEstimation/POETS_info_25_04_18_PlateletContributionToROTEM.txt"
+	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_25_04_18.txt"))
+	initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_29_04_18.txt"))
+	outputfile = "../parameterEstimation/POETS_info_29_04_18_PlateletContributionToROTEM.txt"
 	ec_array = zeros(number_of_objectives)
 	pc_array = zeros(number_of_parameters)
 	#bound thrombin generation parameters more tightly than fibrinolysis ones

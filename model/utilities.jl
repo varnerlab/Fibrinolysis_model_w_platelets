@@ -473,23 +473,23 @@ function setCompleteModelIC(IC, patient_id)
 		IC[1]=IC[1]*1.4
 		IC[5]=IC[5]*.95
 		#IC[20]=IC[20]*1.35
-#	elseif(patient_id==6)
-#		IC[1]=IC[1]*.95
+	elseif(patient_id==6)
+		IC[1]=IC[1]*.95
 	elseif(patient_id==7)
-#		IC[1] = IC[1]*.8
-#		IC[3] = IC[3]*1.2
-#		IC[5] = IC[5]*1.2
-#		IC[15] = IC[15]*1.2
-#		IC[20]=IC[20]*.75
+		IC[1] = IC[1]*.8
+		IC[3] = IC[3]*1.2
+		IC[5] = IC[5]*1.2
+		IC[15] = IC[15]*1.2
+		IC[20]=IC[20]*.75
 	elseif(patient_id==8)
-#		IC[1]= IC[1]*.8
-#		IC[3] = IC[3]*1.2
-#		IC[5] = IC[5]*1.2
-#		IC[15] = IC[15]*1.2
-#		IC[20]=IC[20]*.75
-#	elseif(patient_id==9)
-#		IC[1]=IC[1]*1.05
-#		IC[20]=IC[20]*1.35
+		IC[1]= IC[1]*.8
+		IC[3] = IC[3]*1.2
+		IC[5] = IC[5]*1.2
+		IC[15] = IC[15]*1.2
+		IC[20]=IC[20]*.75
+	elseif(patient_id==9)
+		IC[1]=IC[1]*1.05
+		IC[20]=IC[20]*1.35
 	elseif(patient_id==10)
 		IC[15] = IC[15]*1.2
 		IC[1]=IC[1]*.95
@@ -551,7 +551,7 @@ end
 	if(contains(string(typeof(x)), "DiffEqBase"))
 		F = x[12,:]+x[18,:]+ x[19,:]+x[22,:]
 	else
-		F = [a[12] for a in x]#+ [a[18] for a in x]+ [a[19] for a in x]+ [a[22] for a in x] # fibrin related species 12,18,19,22
+		F = [a[12] for a in x]+ [a[18] for a in x]+ [a[19] for a in x]+ [a[22] for a in x] # fibrin related species 12,18,19,22
 	end
 	normal_platelet_count = 300 #*10^6 #/mL
 	A0 = .01 #baseline ROTEM signal
@@ -778,7 +778,9 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	close("all")
 	#POETs_data = "../parameterEstimation/POETS_info_28_03_18_PlateletContributionToROTEM.txt"
 	#POETs_data="../parameterEstimation/POETS_info_05_04_18_PlateletContributionToROTEM.txt"
-	POETs_data ="../parameterEstimation/POETS_info_11_04_18_PlateletContributionToROTEM.txt"
+	#POETs_data ="../parameterEstimation/POETS_info_11_04_18_PlateletContributionToROTEM.txt"
+	#POETs_data = "../parameterEstimation/POETS_info_25_04_18_PlateletContributionToROTEM.txt"
+	POETs_data = "../parameterEstimation/POETS_info_27_04_18_PlateletContributionToROTEM.txt"
 	ec,pc,ra=parsePOETsoutput(POETs_data)
 	ids = [5,6,7,8]
 	tPAs = [0,2]
@@ -788,7 +790,7 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	numParamSets = 2
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
-			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_28_03_2018.pdf")
+			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_27_04_2018.pdf")
 			bestparams=generateNbestPerObjective(numParamSets,ec,pc)
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParams(bestparams, ids[j], tPAs[k], savestr)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
@@ -834,7 +836,7 @@ function makeTrainingFigurePlatletContributionToROTEM()
                ha="right",
                va="top", fontsize = 24, family = "sans-serif")
 
-	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_11_04_18PlatletContributionToROTEMICAdjustmentBest2PerObj.pdf"))
+	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_27_04_18PlatletContributionToROTEMICAdjustmentBest2PerObj.pdf"))
 end
 
 function makeTrainingFigurePolymerizedPlatelets()
