@@ -1,4 +1,4 @@
-using PyPlot
+#using PyPlot
 using ExcelReaders
 
 function plotAverageThrombin(pathToData, savestr)

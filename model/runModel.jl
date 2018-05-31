@@ -1,12 +1,12 @@
 include("Balances.jl")
 include("CoagulationModelFactory.jl")
 include("utilities.jl")
-include("plotData.jl")
+#include("plotData.jl")
 #using Sundials
 using ODE
-using PyPlot
-using PyCall
-PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
+#using PyPlot
+#using PyCall
+#PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
 
 function runModel(TSTART,Ts,TSTOP, platelet_count)
 	#TSTART = 0.0
@@ -478,6 +478,31 @@ end
 	return AUC
 end
 
+@everywhere function runModelWithParamsReturnA(params,tPA)
+	TSTART = 0.0
+	Ts = .02
+	if(tPA==0)
+		TSTOP=60.0
+	else
+		TSTOP=180.0
+	end
+	TSIM = collect(TSTART:Ts:TSTOP)
+	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
+	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
+	#pathToData = "../data/Buentas1999Fig4100PercentProthrombin.txt"
+	#use default platelets	
+	#params[47]=curr_platelets
+	dict = buildCompleteDictFromOneVector(params)
+	initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
+	initial_condition_vector[16]=tPA
+	platelet_count = params[47]
+	fbalances(t,y)= Balances(t,y,dict) 
+	t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0)
+	A = convertToROTEMPlateletContribution(t,X, tPA,platelet_count)
+	#AUC=calculateAUC(t, A)
+	return t,A
+end
+
 @everywhere function runModelWithParamsSetICReturnAUC(params)
 	close("all")
 	TSTART = 0.0
@@ -530,13 +555,57 @@ end
 	#pathToData = "../data/Buentas1999Fig4100PercentProthrombin.txt"
 	#use default platelets	
 	#params[47]=curr_platelets
+	modelparams = params[1:77]
+	curr_platelets=params[47]
+	dict = buildCompleteDictFromOneVector(modelparams)
+	initial_condition_vector = currIC
+	tPA = initial_condition_vector[16]
+	fbalances(t,y)= Balances(t,y,dict) 
+	t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0)
+	#A = convertToROTEM(t,X,tPA)
+	A =  convertToROTEMPlateletContribution(t,X, tPA,curr_platelets)
+	return t,A
+end
+
+@everywhere function runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
+	TSTART = 0.0
+	Ts = .02
+	TSTOP=120.0
+	TSIM = collect(TSTART:Ts:TSTOP)
+	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
+	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
+	#pathToData = "../data/Buentas1999Fig4100PercentProthrombin.txt"
+	#use default platelets	
+	#params[47]=curr_platelets
+	modelparams = params[1:77]
+	curr_platelets=genPlatelets
+	dict = buildCompleteDictFromOneVector(modelparams)
+	tPA = genIC[16]
+	dict["FACTOR_LEVEL_VECTOR"]=genExp
+	fbalances(t,y)= Balances(t,y,dict) 
+	t,X=ODE.ode23s(fbalances,(genIC),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0)
+	#A = convertToROTEM(t,X,tPA)
+	A =  convertToROTEMPlateletContribution(t,X, tPA,curr_platelets)
+	return t,A
+end
+
+@everywhere function runModelWithParamsChangeICReturnA(params)
+	TSTART = 0.0
+	Ts = .02
+	TSTOP=120.0
+	TSIM = collect(TSTART:Ts:TSTOP)
+	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
+	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
+	#pathToData = "../data/Buentas1999Fig4100PercentProthrombin.txt"
+	#use default platelets	
+	curr_platelets=params[47]
 	modelparams = params
 	dict = buildCompleteDictFromOneVector(modelparams)
 	initial_condition_vector = currIC
 	tPA = initial_condition_vector[16]
 	fbalances(t,y)= Balances(t,y,dict) 
 	t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0)
-	A = convertToROTEM(t,X,tPA)
+	A =  convertToROTEMPlateletContribution(t,x, tPA,curr_platelets)
 	return A,t
 end
 

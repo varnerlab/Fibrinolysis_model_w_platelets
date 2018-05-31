@@ -3,7 +3,7 @@ using ODE
 #using Optim
 #include("DEBalanceEqns.jl")
 include("utilities.jl")
-include("BalanceEquations.jl")
+include("Balances.jl")
 include("CoagulationModelFactory.jl")
 
 function runSim(params,ICs)
@@ -25,7 +25,7 @@ function runSim(params,ICs)
 	aleph=PROBLEM_DICTIONARY["ALEPH"]
 
 	allparams = vcat(kinetic_parameter_vector,control_parameter_vector,qualitative_factor_level_vector,platelet_parameter_vector,timing,fibrin_kinetic_parameter_vector,fibrin_control_vector, FVIII_control,aleph)
-	fbalances(t,y)=BalanceEquations(t,y,PROBLEM_DICTIONARY)
+	fbalances(t,y)=Balances(t,y,PROBLEM_DICTIONARY)
 	t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0)
 
 	#prob=ODEProblem(BalanceEquations, ICs, (tstart,tend), allparams)

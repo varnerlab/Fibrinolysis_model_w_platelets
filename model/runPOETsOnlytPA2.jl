@@ -107,20 +107,16 @@ function objectiveForPOETSPlatletContribution(parameter_array)
 		FIIa = [a[2] for a in X]
 		fibrinogen = [a[14] for a in X]
 		A = convertToROTEMPlateletContribution(t,X,tPA,all_platelets[j])
+		AnyFlats=checkForFlatness(t,A)
 		hasdynamics=checkForDynamics(FIIa, t)
-		if(hasdynamics)
+		#make sure it has dynamics, used up fibrinogen and doesn't have any flat patches'
+		if(hasdynamics && fibrinogen[end]<370 && AnyFlats==false)
 			print("has dynamics")
 			MSE, interpData = calculateMSE(t,A, allexperimentaldata[j])
 		else
 			MSE =10^7 #if it doesn't generate dynamics, make this parameter set very unfavorable
 		end
 		#check to make sure we used up fibrinogen, penalize if we haven't
-		if(fibrinogen[end]<100)
-			MSE, interpData = calculateMSE(t,A, allexperimentaldata[j])
-		else
-			MSE = 10^7
-		end
-
 		@show myid(), count,MSE
 		obj_array[findin(selected_idxs,j),1]=MSE
 		count = count+1
@@ -221,8 +217,9 @@ function attemptOptimizationPOETSOnlytPA2PlateletContribution()
 	#initial_parameter_estimate=vec(readdlm("../parameterEstimation/useUpFibrinogen_04_11_18.txt"))
 	#initial_parameter_estimate = vec(readdlm("../parameterEstimation/startingPoint_19_4_18.txt"))
 	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_25_04_18.txt"))
-	initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_29_04_18.txt"))
-	outputfile = "../parameterEstimation/POETS_info_29_04_18_PlateletContributionToROTEM.txt"
+	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_29_04_18.txt"))
+	initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_02_05_18.txt"))
+	outputfile = "../parameterEstimation/POETS_info_02_05_18_PlateletContributionToROTEMFlatness1.txt"
 	ec_array = zeros(number_of_objectives)
 	pc_array = zeros(number_of_parameters)
 	#bound thrombin generation parameters more tightly than fibrinolysis ones
@@ -281,3 +278,4 @@ function attemptOptimizationPOETSOnlytPA2PlateletContributionDiffROTEM()
 
 	return (ec_array,pc_array)
 end
+

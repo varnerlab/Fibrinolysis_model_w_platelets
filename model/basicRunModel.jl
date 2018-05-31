@@ -89,4 +89,9 @@ function basicRunModel(params)
 	#savefig("figures/AfterNM_24_03_2017.pdf")
 	figure(figsize=[15,15])
 	makeLoopPlots(t,X)
+	AnyFlats=checkForFlatness(t,A)
+	@show AnyFlats
+	return t,A
 end
+
+

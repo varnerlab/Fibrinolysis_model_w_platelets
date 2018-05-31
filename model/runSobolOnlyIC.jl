@@ -1,0 +1,3 @@
+include("runModelForSobol.jl")
+
+runModelForSobolParallel_OnlyInitialConditions_calculateCurveStats()
