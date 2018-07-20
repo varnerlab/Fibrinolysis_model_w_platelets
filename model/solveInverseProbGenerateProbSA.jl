@@ -104,6 +104,11 @@ function objective_five_metrics_weighted(params::Vector, grad::Vector)
 end
 
 function objective_six_metrics_weighted(params)
+	#check for positivity-this matters in unbounded optimization
+	if(true in (params .<0)):
+		calc_obj = 10^8
+		return calc_obj
+	end
 	curr_exp = params[1:8]
 	curr_ICs = params[9:end-1]
 	curr_platelets = params[end]
