@@ -103,7 +103,7 @@ function objective_five_metrics_weighted(params::Vector, grad::Vector)
 
 end
 
-function objective_six_metrics_weighted(params::Vector, grad::Vector)
+function objective_six_metrics_weighted(params)
 	curr_exp = params[1:8]
 	curr_ICs = params[9:end-1]
 	curr_platelets = params[end]
@@ -265,12 +265,11 @@ function runSA(seed,iter)
 	global sel_target = [target_CT, target_CFT, target_alpha, target_MCF,target_MaximumLysis, target_AUC]
 	@show sel_target
 	global weights = [1,1,1.0,1,1,1] 
-	@show opt
 	#run optimization
+	print("Starting Simulated Annealing")
 	tic()
-	@show (all_nominal .< ups)
-	@show (all_nominal .> lbs)
-	res = optimize(objective_six_metrics_weighted,lbs,ups, SimulatedAnnealing(), Optim.Options(iterations=10^2))
+	res = optimize(objective_six_metrics_weighted,lbs,ups, SimulatedAnnealing(), Optim.Options(iterations=2*10^3))
+	toc()
 	print(res)
 	writedlm(string("../solveInverseProb/foundIcs_20_07_18_", iter, ".txt"), res.minimizer)
 end
