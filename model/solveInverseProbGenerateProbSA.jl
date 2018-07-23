@@ -104,6 +104,7 @@ function objective_five_metrics_weighted(params::Vector, grad::Vector)
 end
 
 function objective_six_metrics_weighted(params)
+	tic()
 	#check for positivity-this matters in unbounded optimization
 	if(true in (params .<0))
 		calc_obj = 10^8
@@ -113,7 +114,8 @@ function objective_six_metrics_weighted(params)
 	curr_ICs = params[9:end-1]
 	curr_platelets = params[end]
 	tPA = curr_ICs[12]
-	R,T =runModelWithParamsChangeICReturnA(kin_params,curr_ICs,curr_exp,curr_platelets)
+	T,R =runModelWithParamsChangeICReturnA(kin_params,curr_ICs,curr_exp,curr_platelets)
+	#print(T)
 	#plot(T,R)
 	#CT,CFT,alpha,MCF,A10,A20,LI30,LI60
 	metrics = calculateCommonMetrics(R,T)
@@ -144,6 +146,7 @@ function objective_six_metrics_weighted(params)
 		calc_obj = sqrt(sum)
 	end
 	#@show sel_metrics, calc_obj
+	toc()
 	return calc_obj
 
 end
@@ -238,7 +241,7 @@ function runSA(seed,iter, numFevals)
 	end
 
 	#Store our ICS to disk
-	writedlm(string("../solveInverseProb/ics_to_match_22_07_18_iter",iter ,".txt"), hcat(genExp', genIC', genPlatelets), ',')
+	writedlm(string("../solveInverseProb/ics_to_match_23_07_18_iter",iter ,".txt"), hcat(genExp', genIC', genPlatelets), ',')
 
 	#generate the curve we're fitting
 	R,T =runModelWithParamsChangeICReturnA(kin_params,genIC,genExp,genPlatelets)
@@ -271,13 +274,13 @@ function runSA(seed,iter, numFevals)
 	@show sel_target
 	global weights = [1,1,1.0,1,1,1] 
 	#run optimization
-	print("Starting PSO")
+	print("Starting SA")
 	tic()
 	#res = optimize(objective_six_metrics_weighted,lbs,ups, SimulatedAnnealing(), Optim.Options(iterations=numFevals))
 	res = optimize(objective_six_metrics_weighted,lbs,ups, ParticleSwarm(n_particles=40), Optim.Options(iterations=numFevals))
 	toc()
 	print(res)
-	writedlm(string("../solveInverseProb/foundIcs_22_07_18_", iter, ".txt"), res.minimizer)
+	writedlm(string("../solveInverseProb/foundIcs_23_07_18_", iter, ".txt"), res.minimizer)
 end
 
 for p in collect(1:20)

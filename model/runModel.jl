@@ -606,7 +606,7 @@ end
 	fbalances(t,y)= Balances(t,y,dict) 
 	t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0)
 	A =  convertToROTEMPlateletContribution(t,x, tPA,curr_platelets)
-	return A,t
+	return t,A
 end
 
 @everywhere function runModelWithParamsSetICReturnROTEM(params)
