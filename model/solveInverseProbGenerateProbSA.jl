@@ -65,7 +65,7 @@ function objective_five_metrics(params::Vector, grad::Vector)
 	#@show calc_obj
 	return calc_obj
 
-end
+end 
 
 function objective_five_metrics_weighted(params::Vector, grad::Vector)
 	curr_exp = params[1:7]
@@ -105,7 +105,7 @@ end
 
 function objective_six_metrics_weighted(params)
 	#check for positivity-this matters in unbounded optimization
-	if(true in (params .<0)):
+	if(true in (params .<0))
 		calc_obj = 10^8
 		return calc_obj
 	end
@@ -170,7 +170,7 @@ function testIfPhysical(params,genIC,genExp,genPlatelets)
 	return isPhysical
 end
 
-function runSA(seed,iter)
+function runSA(seed,iter, numFevals)
 	# Load data -
 	global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
 	d = buildCompleteDictFromOneVector(kin_params)
@@ -238,7 +238,7 @@ function runSA(seed,iter)
 	end
 
 	#Store our ICS to disk
-	writedlm(string("../solveInverseProb/ics_to_match_20_07_18_iter",iter ,".txt"), hcat(genExp', genIC', genPlatelets), ',')
+	writedlm(string("../solveInverseProb/ics_to_match_22_07_18_iter",iter ,".txt"), hcat(genExp', genIC', genPlatelets), ',')
 
 	#generate the curve we're fitting
 	R,T =runModelWithParamsChangeICReturnA(kin_params,genIC,genExp,genPlatelets)
@@ -271,15 +271,19 @@ function runSA(seed,iter)
 	@show sel_target
 	global weights = [1,1,1.0,1,1,1] 
 	#run optimization
-	print("Starting Simulated Annealing")
+	print("Starting PSO")
 	tic()
-	res = optimize(objective_six_metrics_weighted,lbs,ups, SimulatedAnnealing(), Optim.Options(iterations=2*10^3))
+	#res = optimize(objective_six_metrics_weighted,lbs,ups, SimulatedAnnealing(), Optim.Options(iterations=numFevals))
+	res = optimize(objective_six_metrics_weighted,lbs,ups, ParticleSwarm(n_particles=40), Optim.Options(iterations=numFevals))
 	toc()
 	print(res)
-	writedlm(string("../solveInverseProb/foundIcs_20_07_18_", iter, ".txt"), res.minimizer)
+	writedlm(string("../solveInverseProb/foundIcs_22_07_18_", iter, ".txt"), res.minimizer)
 end
 
-
+for p in collect(1:20)
+	print("On iter", p, " of 20")
+	runSA(11+p,p,1000)
+end
 
 
 
