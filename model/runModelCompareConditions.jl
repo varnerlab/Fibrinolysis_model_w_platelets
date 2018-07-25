@@ -39,7 +39,7 @@ function runModelCompareConditions(givenICparams, foundICparams)
 	savefig("../figures/ComparingICs.pdf")
 end
 
-foundICs = readdlm("../solveInverseProb/foundIcs_20_07_18_2.txt")
-givenICs = readdlm("../solveInverseProb/ics_to_match_20_07_18_iter2.txt", ',')
+foundICs = readdlm("../solveInverseProb/foundIcs_24_07_18_Hyercoag1.txt")
+givenICs = readdlm("../solveInverseProb/ics_to_match_24_07_18_Hyercoag_iter1.txt", ',')
 
 runModelCompareConditions(givenICs, foundICs)

@@ -173,7 +173,7 @@ function testIfPhysical(params,genIC,genExp,genPlatelets)
 	return isPhysical
 end
 
-function runSA(seed,iter, numFevals)
+function runOptHyercoag(seed,iter, numFevals)
 	# Load data -
 	global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
 	d = buildCompleteDictFromOneVector(kin_params)
@@ -183,7 +183,7 @@ function runSA(seed,iter, numFevals)
 	nominal_experimental = d["FACTOR_LEVEL_VECTOR"]
 	platelets = d["PLATELET_PARAMS"][5]
 
-	@show size(nominal_experimental), size(nominal_ICs), size(platelets)
+	#@show size(nominal_experimental), size(nominal_ICs), size(platelets)
 
 	#concat together
 	all_nominal =vcat(nominal_experimental,nominal_ICs, platelets)
@@ -200,7 +200,7 @@ function runSA(seed,iter, numFevals)
 	#replace zeros in nominal conditions with eps, otherwise NLopt gets upset
 	all_nominal[all_nominal.==0]=eps()
 
-	@show lbs.<ups
+	#@show lbs.<ups
 
 	#normal ranges for NATEM from https://www.sciencedirect.com/science/article/pii/S0049384810004081?via%3Dihub
 	#CT-461-917 s
@@ -217,10 +217,26 @@ function runSA(seed,iter, numFevals)
 	temp_IC = d["INITIAL_CONDITION_VECTOR"]
 	temp_exp = d["FACTOR_LEVEL_VECTOR"]
 	temp_platelets = d["PLATELET_PARAMS"][5] 
-	stretchfactor = 4.0 #for setting upper and lower bounds of our generated ROTEM curve
+	stretchfactor = 2.0 #for setting upper and lower bounds of our generated ROTEM curve
 	genIC =temp_IC/stretchfactor+rand(size(temp_IC)).*(stretchfactor*temp_IC-temp_IC*1/stretchfactor)
 	genExp =temp_exp/stretchfactor+rand(size(temp_exp)).*(stretchfactor*temp_exp-temp_exp*1/stretchfactor)
 	genPlatelets =temp_platelets/stretchfactor+rand(size(temp_platelets)).*(stretchfactor*temp_platelets-temp_platelets*1/stretchfactor)
+	#for hypercoag, more FII, less PC, less ATIII, more FV_FX, more fibrin, less plasninogen, less tpA, less PAI-1
+	poss_idxs_pos = [1,9,12]
+	poss_idxs_neg = [3,5,12,15,16,21]
+	all_poss_idxs =vcat(poss_idxs_pos, poss_idxs_neg)
+	#let's only adjust one of these for now
+	num_to_adjust =2
+	adj_factor =2.0
+	for j =1:num_to_adjust
+		curr_idx = all_poss_idxs[rand(1:end)]
+		if(curr_idx in poss_idxs_pos)
+			genIC[curr_idx] = genIC[curr_idx]*adj_factor
+		elseif(curr_idx in poss_idxs_neg)
+			genIC[curr_idx] = genIC[curr_idx]*1/adj_factor
+		end
+	end
+
 
 	genIC = vec(genIC)
 	genExp = vec(genExp)
@@ -232,6 +248,15 @@ function runSA(seed,iter, numFevals)
 		genIC =temp_IC/stretchfactor+rand(size(temp_IC)).*(stretchfactor*temp_IC-temp_IC*1/stretchfactor)
 		genExp =temp_exp/stretchfactor+rand(size(temp_exp)).*(stretchfactor*temp_exp-temp_exp*1/stretchfactor)
 		genPlatelets =temp_platelets/stretchfactor+rand(size(temp_platelets)).*(stretchfactor*temp_platelets-temp_platelets*1/stretchfactor)
+		for j =1:num_to_adjust
+			curr_idx = all_poss_idxs[rand(1:end)]
+			if(curr_idx in poss_idxs_pos)
+				genIC[curr_idx] = genIC[curr_idx]*adj_factor
+			elseif(curr_idx in poss_idxs_neg)
+				genIC[curr_idx] = genIC[curr_idx]*1/adj_factor
+			end
+		end
+		
 		genIC = vec(genIC)
 		genExp = vec(genExp)
 		#let time delay range between 400 and 1500
@@ -241,7 +266,8 @@ function runSA(seed,iter, numFevals)
 	end
 
 	#Store our ICS to disk
-	writedlm(string("../solveInverseProb/ics_to_match_24_07_18_iter",iter ,".txt"), hcat(genExp', genIC', genPlatelets), ',')
+	print("Found physically possible ICs. Storing\n")
+	writedlm(string("../solveInverseProb/ics_to_match_24_07_18_Hyercoag_iter",iter ,".txt"), hcat(genExp', genIC', genPlatelets), ',')
 
 	#generate the curve we're fitting
 	R,T =runModelWithParamsChangeICReturnA(kin_params,genIC,genExp,genPlatelets)
@@ -280,12 +306,12 @@ function runSA(seed,iter, numFevals)
 	res = optimize(objective_six_metrics_weighted,lbs,ups, ParticleSwarm(n_particles=40), Optim.Options(iterations=numFevals))
 	toc()
 	print(res)
-	writedlm(string("../solveInverseProb/foundIcs_24_07_18_", iter, ".txt"), res.minimizer)
+	writedlm(string("../solveInverseProb/foundIcs_24_07_18_Hyercoag", iter, ".txt"), res.minimizer)
 end
 
 for p in collect(1:20)
-	print("On iter", p, " of 20")
-	runSA(11+p,p,500)
+	print("On iter", p, " of 20 \n")
+	runOptHyercoag(11+p,p,100)
 end
 
 
