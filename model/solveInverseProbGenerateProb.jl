@@ -296,6 +296,10 @@ function runNLopt(seed,iter)
 	writedlm(string("../solveInverseProb/foundIcs_08_5_18_", iter, ".txt"), minx_local)
 end
 
+for j = 1:10
+	runNLopt(j,j)
+end
+
 
 
 

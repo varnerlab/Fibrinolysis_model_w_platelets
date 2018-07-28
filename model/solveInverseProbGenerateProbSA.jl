@@ -151,8 +151,7 @@ function objective_six_metrics_weighted(params)
 
 end
 
-function testIfPhysical(params,genIC,genExp,genPlatelets)
-	R,T =runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
+function testIfPhysical(R,T)
 
 	#describe the curve we've created'
 	metrics = calculateCommonMetrics(R,T)
@@ -161,7 +160,7 @@ function testIfPhysical(params,genIC,genExp,genPlatelets)
 	target_alpha = metrics[3]
 	target_MCF = metrics[4]
 	#experiment run for 120 mins =2 hours
-	target_MaximumLysis = calculateLysisAtTime(R,T,120.0)
+	target_MaximumLysis = calculateLysisAtTime(R,T,60.0)
 	target_AUC = calculateAUC(R,T)
 
 	temp_target=[target_CT, target_CFT, target_alpha, target_MCF,target_MaximumLysis, target_AUC]
@@ -173,23 +172,58 @@ function testIfPhysical(params,genIC,genExp,genPlatelets)
 	return isPhysical
 end
 
+function testIfNominal(R,T)
+	#nominal values from Multi-centre investigation on reference ranges for ROTEM thromboelastometry.
+	metrics = calculateCommonMetrics(R,T)
+	target_CT = metrics[1]
+	target_CFT = metrics[2]
+	target_alpha = metrics[3]
+	target_MCF = metrics[4]
+	#experiment run for 120 mins =2 hours
+	target_MaximumLysis = calculateLysisAtTime(R,T,60.0)
+	target_AUC = calculateAUC(R,T)
+
+	nominal = true
+	if(!(target_CT>30/60 && target_CT<246/60))
+		nominal =false
+	end
+	#if(!(target_CFT>40/60 && target_CFT<148/60))
+	#	nominal =false
+	#end
+	if(!(target_MCF> 49 && target_MCF<72))
+		nominal = false
+	end
+	@show target_CT, target_CFT, target_MCF
+	return nominal
+	
+
+
+end
+
+function generatePeturbed(lower, upper, cond)
+	return cond*lower+rand(size(cond)).*(upper*cond-cond*lower)
+end
+
 function runSA(seed,iter, numFevals)
 	# Load data -
 	global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
 	d = buildCompleteDictFromOneVector(kin_params)
 	nominal_ICs = d["INITIAL_CONDITION_VECTOR"]
+	#tPA concentration based on https://diapharma.com/tissue-plasminogen-activator-tpa/#Concentration/activity
+	#nominal_ICs[16]=.0735#give us some tPA
+	d["INITIAL_CONDITION_VECTOR"] = nominal_ICs
 	#nominal_ICs=[1106.0, 0.0, 60.0, 0.0, 2686.0, 0.79, 3.95, 0.0, 0.0, 7900.0, 971.7, 1.58, 0.0, 0.0, 0.0, 932.2, 0.4424, 0.0]
 	#nominal_experimental=[1.975,15.8,0.553,71.1,134.3,73.47,70.0]
 	nominal_experimental = d["FACTOR_LEVEL_VECTOR"]
 	platelets = d["PLATELET_PARAMS"][5]
 
-	@show size(nominal_experimental), size(nominal_ICs), size(platelets)
+	#@show size(nominal_experimental), size(nominal_ICs), size(platelets)
 
 	#concat together
 	all_nominal =vcat(nominal_experimental,nominal_ICs, platelets)
 	#create upper and lower bounds
 	lbs = zeros(size(all_nominal))
-	ups  =4*all_nominal
+	ups  =2*all_nominal
 	#make it possible for things that are zero to move some
 	ups[ups.==0]=2.0
 	#ups[9]=.1 #limit the amount of FIIa we can start with
@@ -200,7 +234,7 @@ function runSA(seed,iter, numFevals)
 	#replace zeros in nominal conditions with eps, otherwise NLopt gets upset
 	all_nominal[all_nominal.==0]=eps()
 
-	@show lbs.<ups
+	#@show lbs.<ups
 
 	#normal ranges for NATEM from https://www.sciencedirect.com/science/article/pii/S0049384810004081?via%3Dihub
 	#CT-461-917 s
@@ -217,34 +251,44 @@ function runSA(seed,iter, numFevals)
 	temp_IC = d["INITIAL_CONDITION_VECTOR"]
 	temp_exp = d["FACTOR_LEVEL_VECTOR"]
 	temp_platelets = d["PLATELET_PARAMS"][5] 
-	stretchfactor = 4.0 #for setting upper and lower bounds of our generated ROTEM curve
-	genIC =temp_IC/stretchfactor+rand(size(temp_IC)).*(stretchfactor*temp_IC-temp_IC*1/stretchfactor)
-	genExp =temp_exp/stretchfactor+rand(size(temp_exp)).*(stretchfactor*temp_exp-temp_exp*1/stretchfactor)
-	genPlatelets =temp_platelets/stretchfactor+rand(size(temp_platelets)).*(stretchfactor*temp_platelets-temp_platelets*1/stretchfactor)
+	#with these two stretch factors, we're going between 50% and 150% of normal
+	stretchfactorupper = 1.5 #for setting upper and lower bounds of our generated ROTEM curve
+	stretchfactorlower = .5	
+	genIC =generatePeturbed(stretchfactorlower, stretchfactorupper, temp_IC)
+	genExp =generatePeturbed(stretchfactorlower, stretchfactorupper, temp_exp)
+	genPlatelets =generatePeturbed(stretchfactorlower, stretchfactorupper, temp_platelets)
 
 	genIC = vec(genIC)
 	genExp = vec(genExp)
 	tPA = genIC[12]
+	#@show genIC-temp_IC
+	#@show genExp-temp_exp
 
-	isPhysical = testIfPhysical(kin_params,genIC,genExp,genPlatelets)
-	while(!isPhysical)
+	T,R =runModelWithParamsChangeICReturnA(kin_params,genIC,genExp,genPlatelets)
+	#@show T
+	isPhysical = testIfPhysical(R,T)
+	isNominal = testIfNominal(R,T)
+	@show isPhysical, isNominal, genIC
+	while(!isPhysical || !isNominal)
 		#this parameters produce a nonsensical results, regenerate and repeat as necceassary 
-		genIC =temp_IC/stretchfactor+rand(size(temp_IC)).*(stretchfactor*temp_IC-temp_IC*1/stretchfactor)
-		genExp =temp_exp/stretchfactor+rand(size(temp_exp)).*(stretchfactor*temp_exp-temp_exp*1/stretchfactor)
-		genPlatelets =temp_platelets/stretchfactor+rand(size(temp_platelets)).*(stretchfactor*temp_platelets-temp_platelets*1/stretchfactor)
+		println("Checking for feasibility")
+		genIC =generatePeturbed(stretchfactorlower, stretchfactorupper, temp_IC)
+		genExp =generatePeturbed(stretchfactorlower, stretchfactorupper, temp_exp)
+		genPlatelets =generatePeturbed(stretchfactorlower, stretchfactorupper, temp_platelets)
 		genIC = vec(genIC)
 		genExp = vec(genExp)
 		#let time delay range between 400 and 1500
 		genMX = 400+rand()*(1500-400)
 		tPA = genIC[12]
-		isPhysical = testIfPhysical(params,genIC,genExp,genPlatelets)
+		T,R =runModelWithParamsChangeICReturnA(kin_params,genIC,genExp,genPlatelets)
+		isPhysical = testIfPhysical(R,T)
+		isNominal = testIfNominal(R,T)
+		@show isPhysical, isNominal, genIC
 	end
 
 	#Store our ICS to disk
-	writedlm(string("../solveInverseProb/ics_to_match_24_07_18_iter",iter ,".txt"), hcat(genExp', genIC', genPlatelets), ',')
-
-	#generate the curve we're fitting
-	R,T =runModelWithParamsChangeICReturnA(kin_params,genIC,genExp,genPlatelets)
+	println("Suitable conditions found. Writing to disk")
+	writedlm(string("../solveInverseProb/ics_to_match_27_07_18_iter",iter ,".txt"), hcat(genExp', genIC', genPlatelets), ',')
 
 	#describe the curve we've created'
 	metrics = calculateCommonMetrics(R,T)
@@ -253,7 +297,7 @@ function runSA(seed,iter, numFevals)
 	target_alpha = metrics[3]
 	target_MCF = metrics[4]
 	#experiment run for 120 mins =2 hours
-	target_MaximumLysis = calculateLysisAtTime(R,T,120.0)
+	target_MaximumLysis = calculateLysisAtTime(R,T,60.0)
 	target_AUC = calculateAUC(R,T)
 
 	#use the midpoint as characteritic scaling
@@ -264,7 +308,7 @@ function runSA(seed,iter, numFevals)
 	scale_MaxLysis = .84
 	scale_AUC = 2500.0
 
-	global sel_scales = [scale_CT, scale_MCF, scale_alpha, scale_MCF, scale_MaxLysis, scale_AUC]
+	global sel_scales = [scale_CT, scale_CFT,scale_alpha, scale_MCF, scale_MaxLysis, scale_AUC]
 
 	#set target-change here
 
@@ -274,18 +318,18 @@ function runSA(seed,iter, numFevals)
 	@show sel_target
 	global weights = [1,1,1.0,1,1,1] 
 	#run optimization
-	print("Starting SA")
-	tic()
-	#res = optimize(objective_six_metrics_weighted,lbs,ups, SimulatedAnnealing(), Optim.Options(iterations=numFevals))
-	res = optimize(objective_six_metrics_weighted,lbs,ups, ParticleSwarm(n_particles=40), Optim.Options(iterations=numFevals))
-	toc()
-	print(res)
-	writedlm(string("../solveInverseProb/foundIcs_24_07_18_", iter, ".txt"), res.minimizer)
+#	print("Starting PSO")
+#	tic()
+#	#res = optimize(objective_six_metrics_weighted,lbs,ups, SimulatedAnnealing(), Optim.Options(iterations=numFevals))
+#	res = optimize(objective_six_metrics_weighted,lbs,ups, ParticleSwarm(n_particles=40), Optim.Options(iterations=numFevals))
+#	toc()
+#	print(res)
+#	writedlm(string("../solveInverseProb/foundIcs_27_07_18_", iter, ".txt"), res.minimizer)
 end
 
-for p in collect(1:20)
-	print("On iter", p, " of 20")
-	runSA(11+p,p,500)
+for p in collect(1:10)
+	print("On iter", p, " of 10")
+	runSA(22+p,p,500)
 end
 
 

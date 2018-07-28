@@ -1,8 +1,8 @@
-using PyPlot
+#using PyPlot
 using ExcelReaders
 #for helvetical
-using PyCall
-PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
+#using PyCall
+#PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
 using Distances #for calculated eucliedian distance
 
 @everywhere function calculateMSE(t,predictedCurve, experimentalData)
