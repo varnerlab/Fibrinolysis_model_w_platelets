@@ -184,13 +184,13 @@ function testIfNominal(R,T)
 	target_AUC = calculateAUC(R,T)
 
 	nominal = true
-	if(!(target_CT>30/60 && target_CT<246/60))
-		nominal =false
-	end
+	#if(!(target_CT>30/60 && target_CT<246/60))
+	#	nominal =false
+	#end
 	#if(!(target_CFT>40/60 && target_CFT<148/60))
 	#	nominal =false
 	#end
-	if(!(target_MCF> 49 && target_MCF<72))
+	if(!(target_MCF> 40 && target_MCF<72))
 		nominal = false
 	end
 	@show target_CT, target_CFT, target_MCF
@@ -206,7 +206,8 @@ end
 
 function runSA(seed,iter, numFevals)
 	# Load data -
-	global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
+	#global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
+	global kin_params = mean(readdlm("../parameterEstimation/best8_02_05_18.txt"),1)
 	d = buildCompleteDictFromOneVector(kin_params)
 	nominal_ICs = d["INITIAL_CONDITION_VECTOR"]
 	#tPA concentration based on https://diapharma.com/tissue-plasminogen-activator-tpa/#Concentration/activity
@@ -252,7 +253,7 @@ function runSA(seed,iter, numFevals)
 	temp_exp = d["FACTOR_LEVEL_VECTOR"]
 	temp_platelets = d["PLATELET_PARAMS"][5] 
 	#with these two stretch factors, we're going between 50% and 150% of normal
-	stretchfactorupper = 1.5 #for setting upper and lower bounds of our generated ROTEM curve
+	stretchfactorupper = 2.0 #for setting upper and lower bounds of our generated ROTEM curve
 	stretchfactorlower = .5	
 	genIC =generatePeturbed(stretchfactorlower, stretchfactorupper, temp_IC)
 	genExp =generatePeturbed(stretchfactorlower, stretchfactorupper, temp_exp)
@@ -318,19 +319,23 @@ function runSA(seed,iter, numFevals)
 	@show sel_target
 	global weights = [1,1,1.0,1,1,1] 
 	#run optimization
-#	print("Starting PSO")
-#	tic()
-#	#res = optimize(objective_six_metrics_weighted,lbs,ups, SimulatedAnnealing(), Optim.Options(iterations=numFevals))
-#	res = optimize(objective_six_metrics_weighted,lbs,ups, ParticleSwarm(n_particles=40), Optim.Options(iterations=numFevals))
-#	toc()
-#	print(res)
-#	writedlm(string("../solveInverseProb/foundIcs_27_07_18_", iter, ".txt"), res.minimizer)
+	print("Starting PSO")
+	tic()
+	#res = optimize(objective_six_metrics_weighted,lbs,ups, SimulatedAnnealing(), Optim.Options(iterations=numFevals))
+	res = optimize(objective_six_metrics_weighted,lbs,ups, ParticleSwarm(n_particles=40), Optim.Options(iterations=numFevals))
+	toc()
+	print(res)
+	writedlm(string("../solveInverseProb/foundIcs_27_07_18_", iter, ".txt"), res.minimizer)
+	writedlm(string("../solveInverseProb/Output_27_07_18_", iter, ".txt"),res)
 end
 
-for p in collect(1:10)
-	print("On iter", p, " of 10")
-	runSA(22+p,p,500)
-end
+#for p in collect(1:10)
+#	print("On iter", p, " of 10")
+#	runSA(22+p,p,500)
+#end
+
+iterNum =  parse(Int64, ARGS[1]))
+runSA(22+iterNum,interNum,5)
 
 
 

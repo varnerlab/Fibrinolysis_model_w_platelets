@@ -39,7 +39,24 @@ function runModelCompareConditions(givenICparams, foundICparams)
 	savefig("../figures/ComparingICs.pdf")
 end
 
-foundICs = readdlm("../solveInverseProb/foundIcs_24_07_18_Hyercoag1.txt")
-givenICs = readdlm("../solveInverseProb/ics_to_match_24_07_18_Hyercoag_iter1.txt", ',')
+function runModelAllICs(numICs)
+	close("all")
+	figure(figsize = [15,15])
+	global kin_params = readdlm("../parameterEstimation/best8_02_05_18.txt")[1,:]
+	d = buildCompleteDictFromOneVector(kin_params)
+	for j = 1:numICs
+		givenICparams = readdlm(string("../solveInverseProb/ics_to_match_27_07_18_iter" j,".txt"), ',')
+		curr_exp = givenICparams[1:8]
+		curr_ICs = givenICparams[9:end-1]
+		curr_platelets = givenICparams[end]
+		tPA = givenICparams[12]
+		println("Running Simulation with given parameters")
+		Tgiven,Rgiven =runModelWithParamsChangeICReturnA(kin_params,curr_ICs,curr_exp,curr_platelets)
+		plot(Tgiven, Rgiven, "k-")
+	end
+end
 
-runModelCompareConditions(givenICs, foundICs)
+#foundICs = readdlm("../solveInverseProb/foundIcs_24_07_18_Hyercoag1.txt")
+#givenICs = readdlm("../solveInverseProb/ics_to_match_24_07_18_Hyercoag_iter1.txt", ',')
+
+#runModelCompareConditions(givenICs, foundICs)
