@@ -124,7 +124,7 @@ function objective_six_metrics_weighted(params)
 	alpha = metrics[3]
 	MCF = metrics[4]
 	#experiment run for 120 mins =2 hours
-	maximumLysis = calculateLysisAtTime(R,T,120.0)
+	maximumLysis = calculateLysisAtTime(R,T,60.0)
 	AUC = calculateAUC(R,T)
 	sel_metrics = [CT,CFT,alpha,MCF,maximumLysis,AUC]
 	#@show abs(sel_metrics-sel_target)
@@ -334,8 +334,8 @@ end
 #	runSA(22+p,p,500)
 #end
 
-iterNum =  parse(Int64, ARGS[1]))
-runSA(22+iterNum,interNum,5)
+iterNum =  parse(Int64, ARGS[1])
+runSA(22+iterNum,iterNum,5)
 
 
 

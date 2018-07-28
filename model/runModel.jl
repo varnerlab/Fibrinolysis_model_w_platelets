@@ -528,7 +528,7 @@ end
 @everywhere function runModelWithParamsChangeICReturnAUC(params, currIC)
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=120.0
+	TSTOP=60.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -548,7 +548,7 @@ end
 @everywhere function runModelWithParamsChangeICReturnA(params, currIC)
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=120.0
+	TSTOP=60.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -570,7 +570,7 @@ end
 @everywhere function runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=120.0
+	TSTOP=60.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -592,7 +592,7 @@ end
 @everywhere function runModelWithParamsChangeICReturnA(params)
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=120.0
+	TSTOP=60.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -613,7 +613,7 @@ end
 	close("all")
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=120.0
+	TSTOP=60.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
