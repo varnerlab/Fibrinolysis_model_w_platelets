@@ -45,7 +45,7 @@ function runModelAllICs(numICs)
 	global kin_params = readdlm("../parameterEstimation/best8_02_05_18.txt")[1,:]
 	d = buildCompleteDictFromOneVector(kin_params)
 	for j = 1:numICs
-		givenICparams = readdlm(string("../solveInverseProb/ics_to_match_27_07_18_iter" j,".txt"), ',')
+		givenICparams = readdlm(string("../solveInverseProb/ics_to_match_29_07_18_hyperfibrinolysis_iter", j,".txt"), ',')
 		curr_exp = givenICparams[1:8]
 		curr_ICs = givenICparams[9:end-1]
 		curr_platelets = givenICparams[end]

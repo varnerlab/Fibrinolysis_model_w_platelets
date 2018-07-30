@@ -1998,7 +1998,10 @@ end
 	#for TEG, MA
 	j = 1
 	MCF = -1
+	#@show TSIM
+	@show maximum(ROTEM_curve)
 	while(j<maximum(size(ROTEM_curve)))
+		#@show j, ROTEM_curve[j]
 		if(ROTEM_curve[j]>=MCF)
 			MCF = ROTEM_curve[j]
 		end
@@ -2010,6 +2013,7 @@ end
 @everywhere function calculateLysisAtTime(ROTEM_curve,TSIM,tdesired)
 	MCF = calculateMCF(ROTEM_curve,TSIM)
 	later_firmess = calculateFirmnessAtTime(ROTEM_curve,TSIM,tdesired)
+	@show MCF, later_firmess
 	LI = (later_firmess)/MCF #since this is expressed as a percent
 	if(LI <0)
 		LI = 0.0
