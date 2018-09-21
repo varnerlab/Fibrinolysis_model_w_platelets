@@ -1,6 +1,7 @@
 include("Balances.jl")
 include("CoagulationModelFactory.jl")
 include("utilities.jl")
+include("LOOCVutils.jl")
 #using Sundials
 using ODE
 using NLopt
@@ -62,6 +63,7 @@ function objectiveForPOETSPlatletContribution(parameter_array)
 		AnyFlats=checkForFlatness(t,A)
 		hasdynamics=checkForDynamics(FIIa, t)
 		#make sure it has dynamics, used up fibrinogen and doesn't have any flat patches'
+		#@show hasdynamics, fibrinogen[end], AnyFlats
 		if(hasdynamics && fibrinogen[end]<370 && AnyFlats==false)
 			print("has dynamics")
 			MSE, interpData = calculateMSE(t,A, allexperimentaldata[j])
@@ -83,7 +85,7 @@ end
 function attemptOptimizationPOETSOnlytPA2PlateletContribution(outputfilename, sel_idxs)
 	number_of_subdivisions = 10
 	number_of_parameters = 77
-	number_of_objectives = 4
+	number_of_objectives = 7
 	global selected_idxs = sel_idxs
 	#initial_parameter_estimate = vec(readdlm("../parameterEstimation/handfitting_23_3_18.txt"))
 	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/goodParamsForPatient7_28_3_18.txt"))
@@ -119,10 +121,55 @@ function attemptOptimizationPOETSOnlytPA2PlateletContribution(outputfilename, se
 	return (ec_array,pc_array)
 end
 
-ids = []
-for j = 1:7
-	push!(ids, parse(Int64, ARGS[j]))
+function attemptOptimizationPOETSOnlytPA2PlateletContributionRestartable(outputfilename, sel_idxs)
+	number_of_subdivisions = 5
+	number_of_parameters = 77
+	number_of_objectives = 7
+	global selected_idxs = sel_idxs
+	#initial_parameter_estimate = vec(readdlm("../parameterEstimation/handfitting_23_3_18.txt"))
+	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/goodParamsForPatient7_28_3_18.txt"))
+	#initial_parameter_estimate = vec(readdlm("../parameterEstimation/meanParamsStartPoint_05_04_18.txt"))
+	#initial_parameter_estimate=vec(readdlm("../parameterEstimation/useUpFibrinogen_04_11_18.txt"))
+	#initial_parameter_estimate = vec(readdlm("../parameterEstimation/startingPoint_19_4_18.txt"))
+	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_25_04_18.txt"))
+	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_29_04_18.txt"))
+	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_02_05_18.txt"))
+	initial_parameter_estimate, round = checkForPreviousAndLoad(outputfilename)
+	@show round, size(initial_parameter_estimate)
+
+	#append round to output file name
+	outputfilename = string(outputfilename, "Round_", round, ".txt")
+	@show outputfilename
+	outputfile = outputfilename
+	ec_array = zeros(number_of_objectives)
+	pc_array = zeros(number_of_parameters)
+	#bound thrombin generation parameters more tightly than fibrinolysis ones
+	global up_arr = vcat(initial_parameter_estimate[1:46]*1.005, initial_parameter_estimate[47:end]*1000)
+	global lb_arr = vcat(initial_parameter_estimate[1:46]/1.005, initial_parameter_estimate[47:end]/1000)
+	for index in collect(1:number_of_subdivisions)
+
+		# Grab a starting point -
+		initial_parameter_estimate =initial_parameter_estimate#+initial_parameter_estimate*rand()*.1
+
+		# Run JuPOETs -
+		(EC,PC,RA) = estimate_ensemble(objectiveForPOETSPlatletContribution,neighbor_function,acceptance_probability_function,cooling_function,initial_parameter_estimate;rank_cutoff=4,maximum_number_of_iterations=5,show_trace=true)
+
+		# Package -
+		@show (EC, PC, RA)
+		ec_array = [ec_array EC]
+		pc_array = [pc_array PC]
+		f = open(outputfile, "a")
+		write(f, string(EC, ",", PC, ",", RA, "\n"))
+		close(f)
+	end
+
+	return (ec_array,pc_array)
 end
-outputfilename = string("../parameterEstimation/POETS_info_09_05_18_PlateletContributionToROTEMFlatness1cases",strip(string(ids)),  ".txt")
-@show outputfilename
-attemptOptimizationPOETSOnlytPA2PlateletContribution(outputfilename, ids)
+
+allids = collect(9:16)
+leaveoutidx = parse(Int64, ARGS[1])
+leaveoutid = allids[leaveoutidx]
+selids = [allids[1:leaveoutidx-1] ;allids[ leaveoutidx+1:end]]
+outputfilename = string("../LOOCV/POETS_info_21_09_18_PlateletContributionToROTEMFlatness1ToBeTestedOn",strip(string(leaveoutid)))
+#@show outputfilename
+attemptOptimizationPOETSOnlytPA2PlateletContributionRestartable(outputfilename, selids)

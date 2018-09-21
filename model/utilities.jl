@@ -31,7 +31,7 @@ using Distances #for calculated eucliedian distance
 	end
 #	figure()
 #	plot(t, interpolatedExperimentalData)
-	@show sum, size(predictedCurve,1)
+#	@show sum, size(predictedCurve,1)
 	return sum/size(predictedCurve,1), interpolatedExperimentalData#MSE
 end
 
@@ -81,72 +81,6 @@ end
 end
 
 
-
-
-# Generates new parameter array, given current array -
-@everywhere function neighbor_function(parameter_array)
-	outputfile="parameterEstimation/POETS_28_03_2017.txt"
-	#@show size(parameter_array)
-#	f = open(outputfile, "a")
-#	write(f,string(parameter_array, "\n"))
-#	close(f)
-
-  SIGMA = 0.05
-  number_of_parameters = length(parameter_array)
-
-  # calculate new parameters -
-  new_parameter_array = parameter_array.*(1+SIGMA*randn(number_of_parameters))
-
-  # Check the bound constraints -
-  LOWER_BOUND = 0
-  UPPER_BOUND = 1E9
-#  lb_arr= LOWER_BOUND*ones(number_of_parameters)
-#  up_arr =UPPER_BOUND*ones(number_of_parameters)
-	#lb_arr[9] = 10.0 #lower bound on k_inhibition_ATIII
-	#lb_arr[45]= 3.0 #lower bound on time delay, 3 minutes
-	#up_arr[46]= .01 #upper bound on scaling for tau
-	#up_arr[3] = 10.0 #upper bound on the k_cat for self activation of thrombin
-
-  # return the corrected parameter arrays -
-  return parameter_bounds_function(new_parameter_array,lb_arr, up_arr)
-end
-
-@everywhere function acceptance_probability_function(rank_array,temperature)
-  return (exp(-rank_array[end]/temperature))
-end
-
-@everywhere function cooling_function(temperature)
-
-  # define my new temperature -
-  alpha = 0.9
-	@show temperature
-  return alpha*temperature
-end
-
-
-# Helper functions -
-@everywhere function parameter_bounds_function(parameter_array,lower_bound_array,upper_bound_array)
-
-  # reflection_factor -
-  epsilon = 0.01
-
-  # iterate through and fix the parameters -
-  new_parameter_array = copy(parameter_array)
-  for (index,value) in enumerate(parameter_array)
-
-    lower_bound = lower_bound_array[index]
-    upper_bound = upper_bound_array[index]
-
-    if (value<lower_bound)
-      new_parameter_array[index] = lower_bound
-    elseif (value>upper_bound)
-      new_parameter_array[index] = upper_bound
-    end
-  end
-
-  return new_parameter_array
-end
-
 @everywhere function createCorrectDict(basic_dict, exp_index)
 	if(exp_index==1)
 		
@@ -167,7 +101,7 @@ end
 @everywhere function generateBestNparameters(n, ec_array, pc_array)
 	#calculate error
 	best_params = Array[]
-	total_error = sum(ec_array[:,2:end],1)
+	total_error = sum(ec_array[:,1:end],1)
 	total_error= vec(total_error)
 	for k in collect(1:n)
 		min_index = indmin(total_error)
@@ -310,6 +244,44 @@ function parsePOETsoutput(filename)
 	outputname = "textparsing.txt"
 	number_of_parameters = 77
   	number_of_objectives = 4
+	ec_array = zeros(number_of_objectives)
+  	pc_array = zeros(number_of_parameters)
+	rank_array = zeros(1)	
+	counter =1
+	for grouping in matchall(r"\[([^]]+)\]", alltext)
+		cleanedgrouping = replace(grouping, "[", "")
+		nocommas = replace(cleanedgrouping, ","," ")
+		allcleaned = replace(nocommas, "]", "")
+		allcleaned = replace(allcleaned, ";", "\n")
+		outfile = open(outputname, "w")
+		write(outfile, allcleaned)
+		close(outfile)
+		formatted = readdlm(outputname)
+		@show formatted	
+		@show size(formatted), counter
+		if(counter == 1)
+			ec_array = [ec_array formatted]
+			counter = counter +1
+		elseif(counter == 2)
+			pc_array = [pc_array formatted]
+			counter = counter +1
+		elseif(counter == 3)
+			rank_array = [rank_array formatted]
+			#@show formatted
+			counter =1
+		end
+		
+	end
+	return ec_array[:,2:end], pc_array[:,2:end], rank_array[:,2:end]
+end
+
+function parsePOETsoutput(filename, number_of_objectives)
+	f = open(filename)
+	alltext = readstring(f)
+	close(f)
+
+	outputname = "textparsing.txt"
+	number_of_parameters = 77
 	ec_array = zeros(number_of_objectives)
   	pc_array = zeros(number_of_parameters)
 	rank_array = zeros(1)	
@@ -2041,33 +2013,44 @@ end
 	tstart=find(x -> x == 10,t)
 	tend =find(x -> x == 55,t)
 	#go through in 5 minute intervals, and check for flatness
-	times = 15:5:40
-	threshold = 1.0
+	times = 15:5:35
+	threshold = .10
 	flats = [] #if an interval is flat, gets true. Else, false
-	for j =2:size(times,1)
-		tstart = times[j-1]
-		tend = times[j]
+	if (maximum(size(t))<=1) #if t is of size 1, we didn't solve properly, so this param set is bad
+		AnyFlats = true
+		return AnyFlats
+	else	
+		for j =2:size(times,1)
+			tstart = times[j-1]
+			tend = times[j]
 
-		tstartidx = find(x -> x == tstart,t)[1]
-		tendidx = find(x -> x == tend,t)[1]
+			tstartidx = findfirst(x -> x >= tstart,t)
+			tendidx = findfirst(x -> x >= tend,t)
 
-		#@show tstartidx,tendidx, tstart, tend
+			#@show tstartidx,tendidx, tstart, tend
+			tstartidx = tstartidx[1]
+			tendidx=tendidx[1]
+			if(tstartidx ==0 && tendidx==0)
+				AnyFlats = true
+				return AnyFlats
+			end
 
-		Aslice = A[tstartidx:tendidx]
-		#@show size(Aslice)
-		#check for change
-		Amin = minimum(Aslice)
-		Amax = maximum(Aslice)
+			Aslice = A[tstartidx:tendidx]
+			#@show size(Aslice)
+			#check for change
+			Amin = minimum(Aslice)
+			Amax = maximum(Aslice)
 
-		if(abs(Amax-Amin)>threshold)
-			push!(flats, false)
+			if(abs(Amax-Amin)>threshold)
+				push!(flats, false)
 
-		else
-			push!(flats, true)
+			else
+				push!(flats, true)
+			end
 		end
+	#@show flats
+		AnyFlats=any(x->x==true, flats)
 	end
-	@show flats
-	AnyFlats=any(x->x==true, flats)
 	return AnyFlats
 end
 

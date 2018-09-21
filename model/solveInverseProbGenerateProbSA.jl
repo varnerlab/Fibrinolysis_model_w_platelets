@@ -326,16 +326,16 @@ function runSA(seed,iter, numFevals)
 	toc()
 	print(res)
 	writedlm(string("../solveInverseProb/foundIcs_27_07_18_", iter, ".txt"), res.minimizer)
-	writedlm(string("../solveInverseProb/Output_27_07_18_", iter, ".txt"),res)
+	writedlm(string("../solveInverseProb/Output_27_07_18_", iter, ".txt"),string(res))
 end
 
-#for p in collect(1:10)
-#	print("On iter", p, " of 10")
-#	runSA(22+p,p,500)
-#end
+for p in collect(1:10)
+	print("On iter", p, " of 10")
+	runSA(22+p,p,1000)
+end
 
-iterNum =  parse(Int64, ARGS[1])
-runSA(22+iterNum,iterNum,5)
+#iterNum =  parse(Int64, ARGS[1])
+#runSA(22+iterNum,iterNum,5)
 
 
 
