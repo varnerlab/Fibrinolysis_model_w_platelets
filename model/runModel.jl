@@ -381,7 +381,7 @@ function runModelWithMultipleParams(pathToParams,pathToData,index,savestr)
 	allparams = readdlm(pathToParams, ',')
 	TSTART = 0.0
 	Ts = .02
-	TSTOP = 60.0
+	TSTOP = 90.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
 	#pathToData = "../data/Luan2010Fig5F.csv"
@@ -458,7 +458,7 @@ end
 	TSTART = 0.0
 	Ts = .02
 	if(tPA==0)
-		TSTOP=60.0
+		TSTOP=90.0
 	else
 		TSTOP=180
 	end
@@ -482,7 +482,7 @@ end
 	TSTART = 0.0
 	Ts = .02
 	if(tPA==0)
-		TSTOP=60.0
+		TSTOP=90.0
 	else
 		TSTOP=180.0
 	end
@@ -528,7 +528,7 @@ end
 @everywhere function runModelWithParamsChangeICReturnAUC(params, currIC)
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=60.0
+	TSTOP=90.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -548,7 +548,7 @@ end
 @everywhere function runModelWithParamsChangeICReturnA(params, currIC)
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=60.0
+	TSTOP=90.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -570,7 +570,7 @@ end
 @everywhere function runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=60.0
+	TSTOP=90.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -592,7 +592,7 @@ end
 @everywhere function runModelWithParamsChangeICReturnA(params)
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=60.0
+	TSTOP=90.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -613,7 +613,7 @@ end
 	close("all")
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=60.0
+	TSTOP=90.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -666,7 +666,7 @@ function runModelWithParamsPeturbIC(params, num_runs)
 	savestr = string("../figures/With_", num_runs, "different_IC.png")
 	TSTART = 0.0
 	Ts = .02
-	TSTOP = 60.0
+	TSTOP = 90.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	pathToData = "../data/fromOrfeo_Thrombin_BL_PRP.txt"
 	#pathToData = "../data/Luan2010Fig5A.csv"
@@ -707,7 +707,7 @@ function runModelWithParamsSetF8(params, FVIIIcontrol, index)
 	close("all")
 	TSTART = 0.0
 	Ts = .02
-	TSTOP = 60.0
+	TSTOP = 90.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	letters = ["A", "B", "C", "D", "E", "F"]
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -735,7 +735,7 @@ function runModelWithParamsSetF8OnePlot(fig,params, FVIIIcontrol, index)
 	#close("all")
 	TSTART = 0.0
 	Ts = .02
-	TSTOP = 60.0
+	TSTOP = 90.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	letters = ["A", "B", "C", "D", "E", "F"]
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
