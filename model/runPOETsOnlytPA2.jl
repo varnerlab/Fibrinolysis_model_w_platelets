@@ -1,6 +1,7 @@
 include("Balances.jl")
 include("CoagulationModelFactory.jl")
 include("utilities.jl")
+include("LOOCVutils.jl")
 #using Sundials
 using ODE
 using NLopt
@@ -219,7 +220,7 @@ function attemptOptimizationPOETSOnlytPA2PlateletContribution()
 	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_25_04_18.txt"))
 	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_29_04_18.txt"))
 	initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_02_05_18.txt"))
-	outputfile = "../parameterEstimation/POETS_info_02_05_18_PlateletContributionToROTEMFlatness1.txt"
+	outputfile = "../parameterEstimation/POETS_info_19_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
 	ec_array = zeros(number_of_objectives)
 	pc_array = zeros(number_of_parameters)
 	#bound thrombin generation parameters more tightly than fibrinolysis ones

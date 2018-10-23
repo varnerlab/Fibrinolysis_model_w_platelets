@@ -131,7 +131,8 @@ end
 
 function runModelForSobolParallel_OnlyInitialConditions_calculateCurveStats()
 	#allIC = readdlm("../sensitivity/sobol_samplesOnlyIC_n2000_pm50_30_05_17.txt", ' ', Float64);
-	allIC = readdlm("../sensitivity/sobol_samplesOnlyIC_n2000_pm50_02_05_18.txt", ' ', Float64);
+	#allIC = readdlm("../sensitivity/sobol_samplesOnlyIC_n2000_pm50_02_05_18.txt", ' ', Float64);
+	allIC=readdlm("../sensitivity/sobolSamplesN1000_05_10_18.txt", ' ', Float64);
 	#startingpt =  readdlm("../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt")
 	startingpt = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
 	meanparams = startingpt#mean(startingpt,1)
@@ -145,8 +146,8 @@ function runModelForSobolParallel_OnlyInitialConditions_calculateCurveStats()
 	@show paramsPerThread
 	@sync @parallel for j in collect(1:nworkers())
 	#for j in collect(1:nworkers())
-		touch(string("../sensitivity/02_05_18_MetricsForSobolPM50PercentOnlyICN2000_", myid()-1, "_of_",nworkers(), ".txt"))
-		f = open(string("../sensitivity/02_05_18_MetricsForSobolPM50PercentOnlyICN2000_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
+		touch(string("../sensitivity/05_10_18_MetricsForSobolPM50PercentOnlyICN1000_", myid()-1, "_of_",nworkers(), ".txt"))
+		f = open(string("../sensitivity/05_10_18_MetricsForSobolPM50PercentOnlyICN1000_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
 		 for k in collect(1:paramsPerThread)
 			if(nworkers() != 1)
 				offset = (myid()-2)*paramsPerThread
@@ -168,7 +169,8 @@ end
 
 function runModelForSobolParallel_OnlyParams_calculateCurveStats()
 	#allIC = readdlm("../sensitivity/sobol_samplesOnlyIC_n2000_pm50_30_05_17.txt", ' ', Float64);
-	allParams = readdlm("../sensitivity/sobol_samplesOnlyParams_n1000_pm50_02_05_18.txt", ' ', Float64);
+	#allParams = readdlm("../sensitivity/sobol_samplesOnlyParams_n1000_pm50_02_05_18.txt", ' ', Float64);
+	allParams =readdlm("../sensitivity/sobolparams_N_500_01_10_18.txt")
 	#startingpt =  readdlm("../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt")
 	startingpt = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
 	meanparams = startingpt#mean(startingpt,1)
@@ -182,8 +184,8 @@ function runModelForSobolParallel_OnlyParams_calculateCurveStats()
 	@show paramsPerThread
 	@sync @parallel for j in collect(1:nworkers())
 	#for j in collect(1:nworkers())
-		touch(string("../sensitivity/02_05_18_MetricsForSobolPM50PercentOnlyParamsN1000_", myid()-1, "_of_",nworkers(), ".txt"))
-		f = open(string("../sensitivity/02_05_18_MetricsForSobolPM50PercentOnlyParamsN1000_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
+		touch(string("../sensitivity/01_10_18_MetricsForSobolPM50PercentOnlyParamsN500_", myid()-1, "_of_",nworkers(), ".txt"))
+		f = open(string("../sensitivity/01_10_18_MetricsForSobolPM50PercentOnlyParamsN500_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
 		 for k in collect(1:paramsPerThread)
 			if(nworkers() != 1)
 				offset = (myid()-2)*paramsPerThread
@@ -194,8 +196,14 @@ function runModelForSobolParallel_OnlyParams_calculateCurveStats()
 			if(offset+k<=numSets)
 				currparams = allParams[Int((offset)+k),:]
 				
-				A,t =runModelWithParamsReturnA(currparams,tPA)
+				t,A =runModelWithParamsReturnA(currparams,tPA)
+				#checking for negativitiy
+				#minA = minimum(A)
+				#@show minA, maximum(A)
 				AUC = calculateAUC(t,A)
+				if(AUC <0)
+					print("Had negative AUC. This is bad.")
+				end
 				CT,CFT,alpha,MCF,A10,A20,LI30,LI60=calculateCommonMetrics(A,t)
 				write(f, string(offset+k, ",", CT, ",", CFT, ",", alpha, ",", MCF, ",", A10, ",", A20, ",", LI30, ",", LI60, ",", AUC,"\n"))
 			end

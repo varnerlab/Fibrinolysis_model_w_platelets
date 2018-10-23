@@ -132,6 +132,8 @@ end
 		allidx = collect(1:size(pc_array,2))
 		removed = allidx
 		for k in collect(1:n)
+			allidx = collect(1:size(pc_array,2))
+			removed = allidx
 			min_index = indmin(curr_error)
 			curr_best_params = pc_array[:,min_index]
 			best_params[counter] = curr_best_params
@@ -140,7 +142,8 @@ end
 			#@show curr_best_params
 			#delete the best ones we've found
 			#@show size(total_error)
-			#pc_array=pc_array[:,removed]
+			@show size(pc_array)
+			pc_array=pc_array[:,removed]
 			curr_error=deleteat!(vec(curr_error),min_index)
 			@show size(pc_array)
 			counter=counter+1
@@ -159,6 +162,8 @@ end
 		allidx = collect(1:size(pc_array,2))
 		removed = allidx
 		for k in collect(1:n)
+			allidx = collect(1:size(pc_array,2))
+			removed = allidx
 			min_index = indmin(curr_error)
 			curr_best_params = pc_array[:,min_index]
 			best_params[counter] = curr_best_params
@@ -167,7 +172,7 @@ end
 			#@show curr_best_params
 			#delete the best ones we've found
 			#@show size(total_error)
-			#pc_array=pc_array[:,removed]
+			pc_array=pc_array[:,removed]
 			curr_error=deleteat!(vec(curr_error),min_index)
 			@show size(pc_array)
 			counter=counter+1
@@ -257,8 +262,8 @@ function parsePOETsoutput(filename)
 		write(outfile, allcleaned)
 		close(outfile)
 		formatted = readdlm(outputname)
-		@show formatted	
-		@show size(formatted), counter
+		#@show formatted	
+		#@show size(formatted), counter
 		if(counter == 1)
 			ec_array = [ec_array formatted]
 			counter = counter +1
@@ -531,7 +536,11 @@ end
 	end
 	normal_platelet_count = 300 #*10^6 #/mL
 	A0 = .01 #baseline ROTEM signal
-	K = 4500-375*tPA
+	#K = 2000-375*tPA
+	#K = 2000-200*tPA
+	#K = 5000-375*tPA#-use me on Monday to check predictions
+	#K = 5000-1000*tPA
+	K = 2000+1125*tPA
 	#K = 1
 	n = 2
 	#for infomration about weights
@@ -541,10 +550,12 @@ end
 	wp = .5 #platelet contribution
 	wf = .5 #fibrin related species contribution
 	if(tPA ==2)
-		S = 60
+		S=70
+		#S = 60
 		#S = 3.5
 	else
-		S = 60
+		S = 70
+		#S = 60
 		#S = 1.5
 	end
 	A1 = S
@@ -759,18 +770,21 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	#POETs_data = "../parameterEstimation/POETS_info_27_04_18_PlateletContributionToROTEM.txt"
 	#POETs_data = "../parameterEstimation/POETS_info_29_04_18_PlateletContributionToROTEM.txt"
 	#POETs_data = "../parameterEstimation/POETS_info_03_05_18_PlateletContributionToROTEM.txt"
-	#POETs_data = "../parameterEstimation/POETS_info_02_05_18_PlateletContributionToROTEM.txt"
 	POETs_data = "../parameterEstimation/POETS_info_02_05_18_PlateletContributionToROTEMFlatness1.txt"
+	#POETs_data ="../parameterEstimation/POETS_info_12_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+	#POETs_data = "../parameterEstimation/POETS_info_15_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+	#POETs_data = "../parameterEstimation/POETS_info_19_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+
 	ec,pc,ra=parsePOETsoutput(POETs_data)
 	ids = [5,6,7,8]
 	tPAs = [0,2]
 	close("all")
 	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
 	counter = 1
-	numParamSets = 2
+	numParamSets = 4
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
-			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_02_05_2018.pdf")
+			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_03_05_2018.pdf")
 			bestparams=generateNbestPerObjective(numParamSets,ec,pc)
 			#bestparams=generateBestNparameters(8,ec,pc)
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(bestparams, ids[j], tPAs[k], savestr)
@@ -820,7 +834,7 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	fig[:text](0.5, 0.04, "Time (minutes)", ha="center", va="center", fontsize=40)
 	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
 
-	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_02_05_18PlatletContributionToROTEMICAdjustmentBest2PerObj.pdf"))
+	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_22_10_18PlatletContributionToROTEMNoICAdjustmentBest2PerObjNewConversion.pdf"))
 end
 
 function makeTrainingFigurePolymerizedPlatelets()
@@ -1020,6 +1034,7 @@ function makePredictionsFigure()
 end
 
 function makePredictionFigurePlatletContributionToROTEM()
+	#use me
 	font2 = Dict("family"=>"sans-serif",
 	    "color"=>"black",
 	    "weight"=>"normal",
@@ -1089,7 +1104,7 @@ function makePredictionFigurePlatletContributionToROTEM()
 	fig[:text](0.5, 0.04, "Time (minutes)", ha="center", va="center", fontsize=40)
 	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
 
-	savefig(string("../figures/PredictionsFigureUsing",numParamSets, "ParameterSets_02_05_18PlatletContributionToROTEMWithICAdjustment.pdf"))
+	savefig(string("../figures/PredictionsFigureUsing",numParamSets, "ParameterSets_02_05_18PlatletContributionToROTEMWithICAdjustmentChangedConversion.pdf"))
 end
 
 function makePredictionFigurePolymerizedPlatelets()
@@ -1252,6 +1267,15 @@ function testROTEMPredicitionGivenParamsPlatetContributionToROTEM(allparams,pati
 		toc()	
 		#@show size([a[2] for a in X])
 		A = convertToROTEMPlateletContribution(t,X,tPA,platelet_count)
+		@show size(A), size(TSIM)
+		while(size(A)!=size(TSIM))
+			tic() 
+			t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
+			toc()	
+			#@show size([a[2] for a in X])
+			A = convertToROTEMPlateletContribution(t,X,tPA,platelet_count)
+		end
+
 		alldata=vcat(alldata,transpose(A))
 	end
 	alldata = alldata[2:end, :] #remove row of zeros
@@ -1352,12 +1376,14 @@ function testROTEMPredicition(pathToParams,patient_id,tPA,savestr)
 		initial_condition_vector=setCompleteModelIC(initial_condition_vector,patient_id)
 		#@show dict
 		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
-		fbalances(t,y)= BalanceEquations(t,y,dict)
+		#fbalances(t,y)= BalanceEquations(t,y,dict)
+		fbalances(t,y)= Balances(t,y,dict)
 		tic() 
 		t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
 		toc()	
 		#@show size([a[2] for a in X])
 		A = convertToROTEM(t,X,tPA)
+		#plot(t,A)
 		alldata=vcat(alldata,transpose(A))
 	end
 	alldata = alldata[2:end, :] #remove row of zeros
@@ -1693,7 +1719,7 @@ function generateSobolParams()
 	str = ""
 	j = 1
 	for name in names
-		currstr = string(name, " ", best[j]*.5, " ", best[j]*1.5, "\n")
+		currstr = string(name, " ", best[j]*.75, " ", best[j]*1.5, "\n")
 		str = string(str,currstr)
 		j=j+1
 	end
@@ -1812,7 +1838,9 @@ function generateSobolParamsForOnlyPeturbFibrin()
 end
 
 function concatSobolResults()
-	filestr1 = "../sensitivity/02_05_18_MetricsForSobolPM50PercentOnlyParamsN1000_" #change me
+	#filestr1 = "../sensitivity/02_05_18_MetricsForSobolPM50PercentOnlyParamsN1000_" #change me
+	#filestr1 = "../sensitivity/01_10_18_MetricsForSobolPM50PercentOnlyParamsN_"
+	filestr1 = "../sensitivity/05_10_18_MetricsForSobolPM50PercentOnlyICN100_"
 	filestr2="_of_4.txt"
 	str = ""
 	for j in collect(1:4)
@@ -1822,7 +1850,7 @@ function concatSobolResults()
 		@show count(c->c=='\n', currstr)
 		str = string(str, currstr)
 	end
-	write("../sensitivity/AllSobol_02_05_18_MetricsForSobolPM50PercentOnlyParamsN1000.txt", str) #and me
+	write("../sensitivity/AllSobol_05_10_18_MetricsForSobolPM50PercentOnlyICN100.txt", str) #and me
 end
 
 function checkThermoFeasability(params)
@@ -1971,21 +1999,15 @@ end
 	j = 1
 	MCF = -1
 	#@show TSIM
-	@show maximum(ROTEM_curve)
-	while(j<maximum(size(ROTEM_curve)))
-		#@show j, ROTEM_curve[j]
-		if(ROTEM_curve[j]>=MCF)
-			MCF = ROTEM_curve[j]
-		end
-		j = j+1
-	end
+	MCF = maximum(ROTEM_curve)
+	#@show MCF
 	return MCF
 end
 
 @everywhere function calculateLysisAtTime(ROTEM_curve,TSIM,tdesired)
 	MCF = calculateMCF(ROTEM_curve,TSIM)
 	later_firmess = calculateFirmnessAtTime(ROTEM_curve,TSIM,tdesired)
-	@show MCF, later_firmess
+	#@show MCF, later_firmess
 	LI = (later_firmess)/MCF #since this is expressed as a percent
 	if(LI <0)
 		LI = 0.0
@@ -2018,7 +2040,7 @@ end
 	tend =find(x -> x == 55,t)
 	#go through in 5 minute intervals, and check for flatness
 	times = 15:5:35
-	threshold = .10
+	threshold = 1.0
 	flats = [] #if an interval is flat, gets true. Else, false
 	if (maximum(size(t))<=1) #if t is of size 1, we didn't solve properly, so this param set is bad
 		AnyFlats = true

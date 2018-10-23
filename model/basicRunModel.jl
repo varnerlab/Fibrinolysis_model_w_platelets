@@ -10,12 +10,13 @@ using PyCall
 PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
 
 function basicRunModel()
-	allparams = readdlm("../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt", '\t')
-	params = allparams[4,:]
+	#allparams = readdlm("../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt", '\t')
+	#params = allparams[4,:]
+	params = vec(readdlm("../parameterEstimation/startingPoint_02_05_18.txt"))
 	close("all")
 	TSTART = 0.0
 	Ts = .02
-	TSTOP = 10
+	TSTOP = 90.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	tPA = 2.0
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -60,18 +61,32 @@ function basicRunModel(params)
 	tPA = 2.0
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
 	#pathToData = "../data/Buentas1999Fig4100PercentProthrombin.txt"
-	pathToData = "../data/fromOrfeo_Thrombin_BL_PRP.txt"
-	
+	#pathToData = "../data/fromOrfeo_Thrombin_BL_PRP.txt"
+	pathToData = "../data/fromOrfeo_Thrombin_HT_PRP.txt"
+	#for observing thrombin generation
+	#HT = 364, BL 420
+	HT_platelets = 364
+	BL_platelets = 420	
+
+
 	data = readdlm(pathToData)
 	time = data[:,1]
 	avg_run = mean(data[:,2:3],2);
 	usefuldata = hcat(time, avg_run)
 
 	curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"6")
+	curr_platelets = HT_platelets
 	fig = figure(figsize = (15,15))
 	params[47]=curr_platelets
 	dict = buildCompleteDictFromOneVector(params)
 	initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
+	#temp adjustments for HT_platelets
+	initial_condition_vector[1] = initial_condition_vector[1]*.7
+	initial_condition_vector[3] = initial_condition_vector[3]*1.3
+	initial_condition_vector[5] = initial_condition_vector[5]*1.3
+	initial_condition_vector[6] = initial_condition_vector[6]*1.3
+	initial_condition_vector[9] = initial_condition_vector[9]*.7
+
 	initial_condition_vector[16]=tPA
 	#fbalances(t,y)= Balances(t,y,dict) 
 	fbalances(t,y)= Balances(t,y,dict) 

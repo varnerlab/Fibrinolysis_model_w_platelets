@@ -189,17 +189,27 @@ function makeAllSobolGraphsOnlyParams()
 	numparams =77
 	fig=figure(figsize=[35,21])
 	metrics = ["AUC", "LI60", "LI30", "A20", "A10", "MCF", "alpha", "CFT", "CT"]
+	#to make labels pretty
+	char_cutoff = 20
+
 	for m in metrics
 		@show m
 		fig=figure(figsize=[25,15])
 		#data = readdlm("sensitivity/soboloutputpm50percentOnlyIC_05_30_17N2000.txt")
-		data = readdlm(string("../sensitivity/SobolResultsOnlyParams_02_05_18_",m, ".txt"))
+		data = readdlm(string("../sensitivity/SobolResultsOnlyParams_01_10_18_",m, ".txt"))
 		topHalf = data[1:numparams+1, :]
 		@show topHalf
 		usefulData = topHalf[2:end, :]
 		names =[]
 		for n in usefulData[:,1]
-			push!(names, replace(replace(n, "initial_", ""), "_", "\n"))
+			curr_name = replace(n, "initial_", "")
+			if(length(curr_name)>char_cutoff)
+				curr_name = replace(curr_name, "_", "\n")
+			else
+				curr_name = replace(curr_name, "_", " ")
+			end
+			#push!(names, replace(replace(n, "initial_", ""), "_", "\n"))
+			push!(names, curr_name)
 		end
 		@show names
 		positions = collect(1:numparams)
@@ -211,9 +221,9 @@ function makeAllSobolGraphsOnlyParams()
 		axis([0,numparams,0,1])
 		ax[:tick_params](labelsize=20)
 		#lines and label for kinetic parameters
-		ax[:xaxis][:set_ticklabels](names, rotation = 90, fontsize = 12)
+		ax[:xaxis][:set_ticklabels](names, rotation = 90, fontsize = 6)
 		plt[:tight_layout]()
-		savefig(string("../sensitivity/SobolTotalOrderOnlyParamsN1000_02_05_18",m, ".pdf"))
+		savefig(string("../sensitivity/SobolTotalOrderOnlyParamsN500_01_10_18",m, ".pdf"))
 	end
 	close("all")
 end
