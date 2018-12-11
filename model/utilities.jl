@@ -26,13 +26,15 @@ using Distances #for calculated eucliedian distance
 		push!(interpolatedExperimentalData,val)
 	end
 	sum = 0.0
-	for j in collect(1:size(predictedCurve,1))
+	for j in collect(1:maximum(size(predictedCurve)))
 		sum = sum +(predictedCurve[j]-interpolatedExperimentalData[j])^2
 	end
 #	figure()
-#	plot(t, interpolatedExperimentalData)
-#	@show sum, size(predictedCurve,1)
-	return sum/size(predictedCurve,1), interpolatedExperimentalData#MSE
+#	plot(t, interpolatedExperimentalData, "b")
+#	plot(experimentalData[:,1], experimentalData[:,2], "--", linewidth = 2.0)
+#	plot(t, predictedCurve', "k")
+	@show sum, maximum(size(predictedCurve))
+	return sum/maximum(size(predictedCurve)), interpolatedExperimentalData#MSE
 end
 
 @everywhere function linearInterp(lowerVal, upperVal, tstart, tend,tdesired)
@@ -149,7 +151,7 @@ end
 			counter=counter+1
 		end
 	end	
-	#writedlm(string("../parameterEstimation/Best", n, "PerObjectiveParameters_11_04_18PlateletContributionToROTEM.txt"), best_params)
+	writedlm(string("../parameterEstimation/Best", n, "PerObjectiveParameters_12_05_18PlateletContributionToROTEM.txt"), best_params)
 	return best_params
 end
 
@@ -429,47 +431,59 @@ function setCompleteModelIC(IC, patient_id)
 	#22 Fiber
 	println(string("Adjusting IC for patient", patient_id))
 	if(patient_id==3)
-		IC[1]=IC[1]*1.35
-		IC[3]=IC[3]*.8
-		IC[5] = IC[5]*.8
-		IC[6]=IC[6]*.8
+		IC[1]=IC[1]*1.45
+		IC[3]=IC[3]*.7
+		IC[5] = IC[5]*.6
+		IC[6]=IC[6]*.6
 		IC[7] = IC[7]*1.05
-		IC[14] = IC[14]*1.1
-		IC[15] = IC[15]*.95
-#		IC[20] = IC[20]*1.1
+##		IC[9] = IC[9]*1.15
+		IC[14] = IC[14]*1.3
+#		IC[15] = IC[15]*.93
+	#	IC[20] = IC[20]*1.2
+		IC[21]=IC[21]*.5
 	elseif(patient_id==4)
-		#IC[1]=IC[1]*1.35
-		IC[3]=IC[3]*.8
-		IC[5] = IC[5]*.8
-		IC[6]=IC[6]*.8
-		IC[7] = IC[7]*1.05
-		IC[14] = IC[14]*1.2
-		IC[15] = IC[15]*.95
+		IC[1]=IC[1]*.9
+		IC[3]=IC[3]*1.2
+		IC[5] = IC[5]*1.2
+		IC[6]=IC[6]*1.2
+		#IC[7] = IC[7]*1.05
+		#IC[14] = IC[14]*1.2
+#		IC[15] = IC[15]*1.15
 	elseif(patient_id==5)
-		IC[1]=IC[1]*1.2
-		IC[5]=IC[5]*.75
-		IC[6] = IC[6]*.8
-		IC[7] = IC[7]*1.05
-		IC[14]=IC[14]*1.2
-		#IC[20]=IC[20]*1.35
+		IC[1]=IC[1]*.8
+		IC[5]=IC[5]*1.2
+		IC[6] = IC[6]*1.1
+#		IC[7] = IC[7]*1.05
+#		IC[14]=IC[14]*1.2
+		IC[20]=IC[20]*.85
 	elseif(patient_id==6)
-		IC[1]=IC[1]*1.05
+		IC[1]=IC[1]*.65				
+		IC[3]=IC[3]*1.2
+		IC[5] = IC[5]*1.2
+#		IC[6]=IC[6]*1.2
+#		IC[9] = IC[9]*.8
+		IC[14] = IC[14]*.95
+#		IC[15] = IC[15]*1.25
 	elseif(patient_id==7)
-		IC[1] = IC[1]*.8
+#		IC[1] = IC[1]*.8
 #		IC[3] = IC[3]*1.2
 #		IC[5] = IC[5]*1.2
-#		IC[14] = IC[14]*1.2
-		IC[20]=IC[20]*.75
+		IC[14] = IC[14]*1.1
+#		IC[20]=IC[20]*.75
 	elseif(patient_id==8)
-#		IC[1]= IC[1]*.8
-#		IC[3] = IC[3]*1.2
-#		IC[5] = IC[5]*1.2
+		IC[1]= IC[1]*.8
+		IC[3] = IC[3]*1.2
+		IC[5] = IC[5]*1.2
 #		IC[15] = IC[15]*1.2
 #		IC[20]=IC[20]*.75
+#		IC[3] = IC[3]*1.2
+#		IC[5] = IC[5]*1.2
+		IC[14] = IC[14]*.95
+#		IC[20]=IC[20]*.75
 	elseif(patient_id==9)
-		IC[1]=IC[1]*1.05
-		IC[5] = IC[5]*.8
-		IC[7] = IC[7]*1.03
+#		IC[1]=IC[1]*1.05
+#		IC[5] = IC[5]*.8
+#		IC[7] = IC[7]*1.03
 #		IC[20]=IC[20]*1.35
 	elseif(patient_id==10)
 		IC[15] = IC[15]*1.2
@@ -540,7 +554,8 @@ end
 	#K = 2000-200*tPA
 	#K = 5000-375*tPA#-use me on Monday to check predictions
 	#K = 5000-1000*tPA
-	K = 2000+1125*tPA
+	#K = 2000+1125*tPA
+	K = 1000+100*tPA
 	#K = 1
 	n = 2
 	#for infomration about weights
@@ -550,11 +565,11 @@ end
 	wp = .5 #platelet contribution
 	wf = .5 #fibrin related species contribution
 	if(tPA ==2)
-		S=70
+		S=65
 		#S = 60
 		#S = 3.5
 	else
-		S = 70
+		S = 65
 		#S = 60
 		#S = 1.5
 	end
@@ -563,7 +578,7 @@ end
 #	figure()
 #	plot(t,wf.*F, "r")
 #	plot(t, wp.*P, "g")
-
+#	legend(["Fibrin contribution", "Polymerized Platelet Contribution"])
 	#x[8]-fraction activated platelets
 	R = wf.*F+wp.*P
 	A = A0+A1.*R.^n./(K.^n+R.^n)
@@ -770,10 +785,11 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	#POETs_data = "../parameterEstimation/POETS_info_27_04_18_PlateletContributionToROTEM.txt"
 	#POETs_data = "../parameterEstimation/POETS_info_29_04_18_PlateletContributionToROTEM.txt"
 	#POETs_data = "../parameterEstimation/POETS_info_03_05_18_PlateletContributionToROTEM.txt"
-	POETs_data = "../parameterEstimation/POETS_info_02_05_18_PlateletContributionToROTEMFlatness1.txt"
+	#POETs_data = "../parameterEstimation/POETS_info_02_05_18_PlateletContributionToROTEMFlatness1.txt" #decent set, reuse 
 	#POETs_data ="../parameterEstimation/POETS_info_12_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
 	#POETs_data = "../parameterEstimation/POETS_info_15_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
-	#POETs_data = "../parameterEstimation/POETS_info_19_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+	#POETs_data = "../parameterEstimation/POETS_info_19_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"''
+	POETs_data = "../parameterEstimation/POETS_info_05_12_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
 
 	ec,pc,ra=parsePOETsoutput(POETs_data)
 	ids = [5,6,7,8]
@@ -781,10 +797,10 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	close("all")
 	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
 	counter = 1
-	numParamSets = 4
+	numParamSets = 2
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
-			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_03_05_2018.pdf")
+			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_05_12_2018.pdf")
 			bestparams=generateNbestPerObjective(numParamSets,ec,pc)
 			#bestparams=generateBestNparameters(8,ec,pc)
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(bestparams, ids[j], tPAs[k], savestr)
@@ -834,7 +850,7 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	fig[:text](0.5, 0.04, "Time (minutes)", ha="center", va="center", fontsize=40)
 	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
 
-	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_22_10_18PlatletContributionToROTEMNoICAdjustmentBest2PerObjNewConversion.pdf"))
+	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_05_12_18PlatletContributionToROTEMNoICAdjustmentBest2PerObjNewConversion.pdf"))
 end
 
 function makeTrainingFigurePolymerizedPlatelets()
@@ -1044,7 +1060,8 @@ function makePredictionFigurePlatletContributionToROTEM()
 	#POETs_data="../parameterEstimation/POETS_info_05_04_18_PlateletContributionToROTEM.txt"
 	#POETs_data ="../parameterEstimation/POETS_info_19_04_18_PlateletContributionToROTEM.txt"
 	#POETs_data="../parameterEstimation/POETS_info_09_04_18_PlateletContributionToROTEMDiffROTEM.txt"
-	POETs_data= "../parameterEstimation/POETS_info_02_05_18_PlateletContributionToROTEMFlatness1.txt"
+	#POETs_data= "../parameterEstimation/POETS_info_02_05_18_PlateletContributionToROTEMFlatness1.txt"
+	POETs_data = "../parameterEstimation/POETS_info_05_12_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
 	ec,pc,ra=parsePOETsoutput(POETs_data)
 	ids = [3,4,9,10]
 	tPAs = [0,2]
@@ -1054,7 +1071,7 @@ function makePredictionFigurePlatletContributionToROTEM()
 	numParamSets = 2
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
-			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "WithICAdjustment_02_05_2018.pdf")
+			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "WithoutICAdjustment_05_12_18.pdf")
 			bestparams=generateNbestPerObjective(numParamSets,ec,pc)
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(bestparams, ids[j], tPAs[k], savestr)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
@@ -1104,7 +1121,7 @@ function makePredictionFigurePlatletContributionToROTEM()
 	fig[:text](0.5, 0.04, "Time (minutes)", ha="center", va="center", fontsize=40)
 	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
 
-	savefig(string("../figures/PredictionsFigureUsing",numParamSets, "ParameterSets_02_05_18PlatletContributionToROTEMWithICAdjustmentChangedConversion.pdf"))
+	savefig(string("../figures/PredictionsFigureUsing",numParamSets, "ParameterSets__05_12_18PlatletContributionToROTEMWithICAdjustmentChangedConversion.pdf"))
 end
 
 function makePredictionFigurePolymerizedPlatelets()
@@ -1259,7 +1276,7 @@ function testROTEMPredicitionGivenParamsPlatetContributionToROTEM(allparams,pati
 		dict = buildCompleteDictFromOneVector(currparams)
 		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
 		initial_condition_vector[16]=tPA #set tPA level
-		initial_condition_vector=setCompleteModelIC(initial_condition_vector,patient_id)
+		#initial_condition_vector=setCompleteModelIC(initial_condition_vector,patient_id)
 		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
 		fbalances(t,y)= Balances(t,y,dict)
 		tic() 
@@ -2039,8 +2056,8 @@ end
 	tstart=find(x -> x == 10,t)
 	tend =find(x -> x == 55,t)
 	#go through in 5 minute intervals, and check for flatness
-	times = 15:5:35
-	threshold = 1.0
+	times = 10:5:40
+	threshold = .5
 	flats = [] #if an interval is flat, gets true. Else, false
 	if (maximum(size(t))<=1) #if t is of size 1, we didn't solve properly, so this param set is bad
 		AnyFlats = true
@@ -2066,6 +2083,7 @@ end
 			#check for change
 			Amin = minimum(Aslice)
 			Amax = maximum(Aslice)
+			#@show Amin, Amax
 
 			if(abs(Amax-Amin)>threshold)
 				push!(flats, false)

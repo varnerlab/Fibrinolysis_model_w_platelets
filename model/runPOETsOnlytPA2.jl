@@ -87,7 +87,7 @@ function objectiveForPOETSPlatletContribution(parameter_array)
 	count = 1
 	@show parameter_array
 	@sync @parallel for j in selected_idxs
-		#@show myid(), j
+		@show myid(), j
 		temp_params = parameter_array
 		temp_params[47] = all_platelets[j] #set platelets to experimental value
 		dict = buildCompleteDictFromOneVector(temp_params)
@@ -111,6 +111,7 @@ function objectiveForPOETSPlatletContribution(parameter_array)
 		AnyFlats=checkForFlatness(t,A)
 		hasdynamics=checkForDynamics(FIIa, t)
 		#make sure it has dynamics, used up fibrinogen and doesn't have any flat patches'
+		@show AnyFlats, hasdynamics, fibrinogen[end]
 		if(hasdynamics && fibrinogen[end]<370 && AnyFlats==false)
 			print("has dynamics")
 			MSE, interpData = calculateMSE(t,A, allexperimentaldata[j])
@@ -220,7 +221,8 @@ function attemptOptimizationPOETSOnlytPA2PlateletContribution()
 	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_25_04_18.txt"))
 	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_29_04_18.txt"))
 	initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_02_05_18.txt"))
-	outputfile = "../parameterEstimation/POETS_info_19_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+	#outputfile = "../parameterEstimation/POETS_info_19_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+	outputfile = "../parameterEstimation/POETS_info_05_12_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
 	ec_array = zeros(number_of_objectives)
 	pc_array = zeros(number_of_parameters)
 	#bound thrombin generation parameters more tightly than fibrinolysis ones

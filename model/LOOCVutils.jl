@@ -8,12 +8,12 @@
 	usefulfiles = allfiles[f]
 	#if we don't find anything with the name, we start with the original guesses
 	if(maximum(size(usefulfiles))==0)
-		#initial_parameter_array = vec(readdlm("../parameterEstimation/startingPoint_02_05_18.txt"))
+		initial_parameter_array = vec(readdlm("../parameterEstimation/startingPoint_02_05_18.txt"))
 		#pathToParams="../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt"
 		#allparams = readdlm(pathToParams, '\t')
 		#allparams = readdlm("../parameterEstimation/Best2PerObj_09_04_18.txt")
-		allparams = readdlm("../parameterEstimation/Best8Overall_03_05_18.txt")
-		initial_parameter_array = allparams[1,:]
+		#allparams = readdlm("../parameterEstimation/Best8Overall_03_05_18.txt")
+		#initial_parameter_array = allparams[1,:]
 		round = 1
 		return initial_parameter_array,round
 	end
@@ -151,10 +151,10 @@ function testLeftOutCase()
 	numObjs = 7 #we had 7 different objectives
 	numPatients = 8
 	numPerObj = 2 #let's pick the best 2 parameter sets per objective
-	numCases = 2
+	numCases = 1
 	#change me to point to the correct files
 	#outputstr = "../LOOCV/POETS_info_04_10_18_PlateletContributionToROTEMFlatness1ToBeTestedOn" #both tPa = 2 and tPa =0
-	outputstr = "../LOOCV/POETS_info_21_09_18_PlateletContributionToROTEMFlatness1ToBeTestedOn" #only tPA 2
+	outputstr = "../LOOCV/POETS_info_31_10_18_PlateletContributionToROTEMFlatness1ToBeTestedOn" #only tPA 2
 	allids = collect(9:16)
 	countids = collect(1:8)
 	countids2 = collect(9:16)
@@ -163,7 +163,7 @@ function testLeftOutCase()
 	allerrors_train = NaN*ones(numPatients*numCases, numPerObj*numPatients)
 	allerrors_test = NaN*ones(numPatients*numCases, numPerObj*numObjs)
 	count = 1
-	for id in allids[1:3]
+	for id in allids
 		println("Testing id=", id)
 		currstr = string(outputstr, id,"Round_1.txt")
 		#get results from LOOCV
@@ -212,7 +212,7 @@ function testLeftOutCase()
 			MSE, interpData = calculateMSE(t,A, allexperimentaldata[id])
 			allerrors_test[count,j]=MSE
 			#store time series to disk so we can average and plot it
-			writedlm(string("../LOOCV/validation/BothTrainsimulatedROTEMPatient", id,"paramset", j, "tPA=2.txt"),hcat(t,A))
+			writedlm(string("../LOOCV/validation/TrainsimulatedROTEMPatient", id,"paramset", j, "tPA=2.txt"),hcat(t,A))
 
 
 			#let's run the tPA = 0 case, too
@@ -230,7 +230,7 @@ function testLeftOutCase()
 			fibrinogen = [a[14] for a in X]
 			A = convertToROTEMPlateletContribution(t,X,tPA,all_platelets[id])
 			#store time series to disk so we can average and plot it
-			writedlm(string("../LOOCV/validation/BothTrainsimulatedROTEMPatient", id,"paramset", j, "tPA=0.txt"),hcat(t,A))
+			writedlm(string("../LOOCV/validation/TrainsimulatedROTEMPatient", id,"paramset", j, "tPA=0.txt"),hcat(t,A))
 		end
 		count = count+1	
 	end
@@ -244,11 +244,11 @@ end
 
 function plotLeftOutCase()
 	#after calculating errors, use this to plot the left out case
-	numObjs = 14 #we had 7 different objectives
+	numObjs = 7 #we had 7 different objectives
 	numPatients = 8
 	numPerObj = 2 #let's pick the best 2 parameter sets per objective
 	#change me to point to the correct files
-	ts_str = "../LOOCV/validation/BothTrainsimulatedROTEMPatient"
+	ts_str = "../LOOCV/validation/TrainsimulatedROTEMPatient"
 	allids = collect(9:16)
 	countids = collect(1:8)
 	#so we know dimensions
@@ -301,7 +301,7 @@ function plotLeftOutCase()
 		xlabel("Time (minutes)", fontsize = 36)
 		ylabel("Amplitude (mm)", fontsize=36)
 
-		savefig(string("../LOOCV/validation/TestingOnID", id, ".pdf"))
+		savefig(string("../LOOCV/validation/TestingOnID", id, "10_31_18.pdf"))
 		
 	end
 end

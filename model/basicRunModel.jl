@@ -36,6 +36,8 @@ function basicRunModel()
 	@show dict["PLATELET_PARAMS"]
 	initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
 	initial_condition_vector[16]=tPA
+	#initial_condition_vector[14]=initial_condition_vector[14]/2
+	@show initial_condition_vector
 	#fbalances(t,y)= Balances(t,y,dict) 
 	fbalances(t,y)= Balances(t,y,dict) 
 	t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
@@ -43,6 +45,8 @@ function basicRunModel()
 	figure()
 	plotFibrinSpecies(t,X)
 	A = convertToROTEMPlateletContribution(t,X,tPA,curr_platelets)
+	anyFlats = checkForFlatness(t,A)
+	@show anyFlats
 	#A = convertToROTEMPlateletContributionScaledF(t,X,tPA,curr_platelets, initial_condition_vector[14])
 	figure()
 	plot(t, A)
@@ -50,6 +54,7 @@ function basicRunModel()
 	#savefig("figures/AfterNM_24_03_2017.pdf")
 	figure(figsize=[15,15])
 	makeLoopPlots(t,X)
+	return t,X
 end
 
 function basicRunModel(params)
@@ -107,6 +112,70 @@ function basicRunModel(params)
 	AnyFlats=checkForFlatness(t,A)
 	@show AnyFlats
 	return t,A
+end
+
+function basicRunCompareROTEM(params,id_pass_in)
+	#id pass in 1-8
+	ids = ["3", "4", "5", "6", "7", "8", "9", "10"]
+	id = parse(Int64,ids[id_pass_in])
+
+	close("all")
+	figure()
+
+	params[47] = all_platelets[id] #set platelets to experimental value
+	dict = buildCompleteDictFromOneVector(params)
+	initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
+	#to adjust per patient. Comment out if we don't want to do that
+	initial_condition_vector=setCompleteModelIC(initial_condition_vector,id)
+	#let's only consider tPA = 2 case for now
+	tPA = 2.0
+	initial_condition_vector[16]=tPA
+	TSTART = 0.0
+	Ts = .02
+	TSTOP = 90.0
+	#solve
+	TSIM = collect(TSTART:Ts:TSTOP)
+	fbalances(t,y)= Balances(t,y,dict) 
+	#t,X = ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep=1E-9)
+	tic()
+	t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0,points=:specified)
+	toc()
+	FIIa = [a[2] for a in X]
+	fibrinogen = [a[14] for a in X]
+	A = convertToROTEMPlateletContribution(t,X,tPA,all_platelets[id_pass_in])
+	MSE, interpData = calculateMSE(t,A, allexperimentaldata[id_pass_in])
+	subplot(121)
+	plot(t,A)
+	plot(allexperimentaldata[id_pass_in+8][:,1], allexperimentaldata[id_pass_in+8][:,2], "k", linewidth = 3)
+	println(string("Max amplitude", maximum(allexperimentaldata[id_pass_in+8][:,2])))
+	xlabel("Time (minutes)")
+	ylabel("Amplitude (mm)")
+	println(string("MSE tPA=2 ", MSE))
+
+
+	#let's run the tPA = 0 case, too
+	tPA = 0.0
+	initial_condition_vector[16]=tPA
+	TSTART = 0.0
+	Ts = .02
+	TSTOP = 120.0
+	#solve
+	TSIM = collect(TSTART:Ts:TSTOP)
+	fbalances(t,y)= Balances(t,y,dict) 
+	#t,X = ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep=1E-9)
+	tic()
+	t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0,points=:specified)
+	toc()
+	#plot tPA =0 case
+	A = convertToROTEMPlateletContribution(t,X,tPA,all_platelets[id_pass_in])
+	MSE, interpData = calculateMSE(t,A, allexperimentaldata[id_pass_in])
+	subplot(122)
+	plot(t,A)
+	plot(allexperimentaldata[id_pass_in][:,1], allexperimentaldata[id_pass_in][:,2], "k", linewidth = 3)
+	xlabel("Time (minutes)")
+	ylabel("Amplitude (mm)")
+	println(string("Max amplitude", maximum(allexperimentaldata[id_pass_in][:,2])))
+	println(string("MSE tPA = 0 ", MSE))
 end
 
 

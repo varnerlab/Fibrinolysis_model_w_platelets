@@ -30,13 +30,14 @@ include("Control.jl")
 	dxdt_total[15] = -rate_array[13] - rate_array[14]                # 15 Plasminogen
 	dxdt_total[16] = -rate_array[18]                                 # 16 tPA
 	dxdt_total[17] = -rate_array[19]                                 # 17 uPA
-	dxdt_total[18] = 1.0(rate_array[8]-rate_array[9]- rate_array[21])                 # 18 Fibrin monomer
-	dxdt_total[19] = rate_array[9]+rate_array[11]-rate_array[10]       # 19 Protofibril
+	dxdt_total[18] = rate_array[8]-2*rate_array[9]- rate_array[21]                 # 18 Fibrin monomer
+	dxdt_total[19] = rate_array[9]+rate_array[11]-2*rate_array[10]       # 19 Protofibril
 	dxdt_total[20] = -rate_array[16]                                 # 20 Antiplasmin
 	dxdt_total[21] = -rate_array[17]-rate_array[18]-rate_array[19]   # 21 PAI_1
-	dxdt_total[22] = 1.0*(rate_array[10]-rate_array[12]-rate_array[20])# 22 Fibers
+	dxdt_total[22] = 1.0*rate_array[10]-rate_array[12]-rate_array[20]# 22 Fibers
 
 	idx = find(x->(x<0),x);
+	#@show t, 7400-(x[12]+x[22]+x[18]+x[19])
 	x[idx] = 0.0;
 	dxdt_total[idx]= 0.0
 

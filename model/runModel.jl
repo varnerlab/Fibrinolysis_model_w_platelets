@@ -133,11 +133,16 @@ end
 
 function plotFibrinSpecies(t,x)
 	selectedidxs = [12,14,18,19,22]
-	legarr = ["Fibrin", "fibrinogen", "fibrin monomer", "protofibril", "Fiber"]
+	legarr = ["Fibrin", "fibrinogen", "fibrin monomer", "protofibril", "Fiber", "Sum of Clot Forming Species"]
+	sumofspecies = zeros(size(a[18] for a in x))
 	for j in selectedidxs
 			@show j
 			semilogy(t, [a[j] for a in x])
+			if(j !=14)
+				sumofspecies= sumofspecies +[a[j] for a in x]
+			end
 	end
+	semilogy(t, sumofspecies)
 	legend(legarr, loc="best")
 	
 end

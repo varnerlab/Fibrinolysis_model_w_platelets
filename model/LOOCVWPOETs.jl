@@ -372,11 +372,11 @@ function attemptOptimizationPOETSBothCasesPlateletContributionRestartable(output
 	return (ec_array,pc_array)
 end
 
-allids = collect(9:16)
-leaveoutidx = parse(Int64, ARGS[1])
-leaveoutid = allids[leaveoutidx]
-selids = [allids[1:leaveoutidx-1] ;allids[ leaveoutidx+1:end]]
-outputfilename = string("../LOOCV/POETS_info_11_10_18_PlateletContributionToROTEMFlatness1ToBeTestedOn",strip(string(leaveoutid)))
+#allids = collect(9:16)
+#leaveoutidx = parse(Int64, ARGS[1])
+#leaveoutid = allids[leaveoutidx]
+#selids = [allids[1:leaveoutidx-1] ;allids[ leaveoutidx+1:end]]
+#outputfilename = string("../LOOCV/POETS_info_31_10_18_PlateletContributionToROTEMFlatness1ToBeTestedOn",strip(string(leaveoutid)))
 #@show outputfilename
 #attemptOptimizationPOETSOnlytPA2PlateletContributionRestartable(outputfilename, selids)
-attemptOptimizationPOETSBothCasesPlateletContributionRestartable(outputfilename, selids)
+#attemptOptimizationPOETSBothCasesPlateletContributionRestartable(outputfilename, selids)
