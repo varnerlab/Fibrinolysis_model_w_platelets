@@ -87,8 +87,8 @@ function testROTEMPredicitionGivenParamsPlatetContributionToROTEM(allparams,pati
 end
 
 function runOptimization(currID)
-	seed =89235
-	numFevals =50
+	seed =89239
+	numFevals =15
 	global patient_id = currID #change me as nesseccary
 	kin_params = mean(readdlm("../parameterEstimation/best8_02_05_18.txt"),1)
 	d = buildCompleteDictFromOneVector(kin_params)

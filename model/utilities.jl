@@ -33,7 +33,7 @@ using Distances #for calculated eucliedian distance
 #	plot(t, interpolatedExperimentalData, "b")
 #	plot(experimentalData[:,1], experimentalData[:,2], "--", linewidth = 2.0)
 #	plot(t, predictedCurve', "k")
-	@show sum, maximum(size(predictedCurve))
+	#@show sum, maximum(size(predictedCurve))
 	return sum/maximum(size(predictedCurve)), interpolatedExperimentalData#MSE
 end
 
@@ -494,6 +494,18 @@ function setCompleteModelIC(IC, patient_id)
 	return IC
 end
 
+function setICsBasedOnNM(initial_condition_vector, patient_id)
+	basestr = "../parameterEstimation/ICEstimation/MinimumICsForPatient"
+	filestr = string(basestr, patient_id, "usingParametersFrom_05_12_18UsingNM_W15Evals.txt")
+	try 
+		params = readdlm(filestr, '\n')
+	catch 
+		println("No file found-will use unadjusted ICS")
+		params = initial_condition_vector
+	end
+	return params
+end
+
 function checkForDynamics(alldata)
 	num_param_sets = size(alldata,1)
 	threshold = 10 #it has dynamics if it creates 10 thrombin
@@ -798,12 +810,13 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
 	counter = 1
 	numParamSets = 2
+	adjustICs = true
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
 			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_05_12_2018.pdf")
 			bestparams=generateNbestPerObjective(numParamSets,ec,pc)
 			#bestparams=generateBestNparameters(8,ec,pc)
-			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(bestparams, ids[j], tPAs[k], savestr)
+			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(bestparams, ids[j], tPAs[k], savestr,adjustICs)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
 			@show counter
 			curraxis=axarr[j,k]
@@ -850,7 +863,7 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	fig[:text](0.5, 0.04, "Time (minutes)", ha="center", va="center", fontsize=40)
 	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
 
-	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_05_12_18PlatletContributionToROTEMNoICAdjustmentBest2PerObjNewConversion.pdf"))
+	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_05_12_18PlatletContributionToROTEMICAdjustment=", string(adjustICs),"Best2PerObjNewConversion.pdf"))
 end
 
 function makeTrainingFigurePolymerizedPlatelets()
@@ -1242,7 +1255,7 @@ function testROTEMPredicitionGivenParams(allparams,patient_id,tPA,savestr)
 	return alldata, meanROTEM, stdROTEM, TSIM
 end
 
-function testROTEMPredicitionGivenParamsPlatetContributionToROTEM(allparams,patient_id,tPA,savestr)
+function testROTEMPredicitionGivenParamsPlatetContributionToROTEM(allparams,patient_id,tPA,savestr, adjustICs::Bool)
 	numparams = 77
 	pathToThrombinData="../data/fromOrfeo_Thrombin_BL_PRP.txt"
 	TSTART = 0.0
@@ -1276,6 +1289,9 @@ function testROTEMPredicitionGivenParamsPlatetContributionToROTEM(allparams,pati
 		dict = buildCompleteDictFromOneVector(currparams)
 		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
 		initial_condition_vector[16]=tPA #set tPA level
+		if(adjustICs==true)
+			initial_condition_vector = setICsBasedOnNM(initial_condition_vector, patient_id)
+		end
 		#initial_condition_vector=setCompleteModelIC(initial_condition_vector,patient_id)
 		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
 		fbalances(t,y)= Balances(t,y,dict)
