@@ -1,4 +1,4 @@
-@everywhere function buildCoagulationModelDictionary(platelet_count)
+ function buildCoagulationModelDictionary(platelet_count)
     
     # Initialize -
     PROBLEM_DICTIONARY = Dict()
@@ -178,7 +178,7 @@
     return PROBLEM_DICTIONARY
 end
 
-@everywhere function buildCoagulationModelDictionary(kinetic_parameter_vector, control_parameter_vector, platelet_parameter_vector,timing, platelet_count)
+ function buildCoagulationModelDictionary(kinetic_parameter_vector, control_parameter_vector, platelet_parameter_vector,timing, platelet_count)
     
     # Initialize -
     PROBLEM_DICTIONARY = Dict()
@@ -304,7 +304,7 @@ end
     return PROBLEM_DICTIONARY
 end
 
-@everywhere function buildCoagulationModelDictionary(kinetic_parameter_vector, control_parameter_vector, platelet_parameter_vector,timing, platelet_count,fibrin_kinetic_parameters,fibrin_control_parameters)
+ function buildCoagulationModelDictionary(kinetic_parameter_vector, control_parameter_vector, platelet_parameter_vector,timing, platelet_count,fibrin_kinetic_parameters,fibrin_control_parameters)
     
     # Initialize -
     PROBLEM_DICTIONARY = Dict()
@@ -339,10 +339,11 @@ end
     PROBLEM_DICTIONARY["KINETIC_PARAMETER_VECTOR"] = kinetic_parameter_vector
     
     PROBLEM_DICTIONARY["CONTROL_PARAMETER_VECTOR"] = control_parameter_vector
+    PROBLEM_DICTIONARY["platelet_count"]=platelet_count
 
    #platlet controls
 	PROBLEM_DICTIONARY["PLATELET_PARAMS"] = platelet_parameter_vector
-	PROBLEM_DICTIONARY["PLATELET_PARAMS"][5] = PROBLEM_DICTIONARY["PLATELET_PARAMS"][5]*platelet_count; #correct for differing amounts of platelets
+	PROBLEM_DICTIONARY["PLATELET_PARAMS"][5] = PROBLEM_DICTIONARY["PLATELET_PARAMS"][5]* PROBLEM_DICTIONARY["platelet_count"]; #correct for differing amounts of platelets
     
     # Experimental output scaling -
     # Fig 5A scaling (3.20,1.0)

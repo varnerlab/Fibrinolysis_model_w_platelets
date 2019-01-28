@@ -5,7 +5,7 @@ using ExcelReaders
 #PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
 using Distances #for calculated eucliedian distance
 
-@everywhere function calculateMSE(t,predictedCurve, experimentalData)
+ function calculateMSE(t,predictedCurve, experimentalData)
 	num_points = size(t,1)
 	interpolatedExperimentalData = Float64[]
 	for j in collect(1:num_points)
@@ -37,7 +37,7 @@ using Distances #for calculated eucliedian distance
 	return sum/maximum(size(predictedCurve)), interpolatedExperimentalData#MSE
 end
 
-@everywhere function linearInterp(lowerVal, upperVal, tstart, tend,tdesired)
+ function linearInterp(lowerVal, upperVal, tstart, tend,tdesired)
 	
 	val = lowerVal + (upperVal-lowerVal)/(tend-tstart)*(tdesired-tstart)
 	if(isnan(val))
@@ -46,7 +46,7 @@ end
 	return val
 end
 
-@everywhere function calculateAUC(t,y)
+ function calculateAUC(t,y)
 	   local n = length(t)
     if (length(y) != n)
         error("Vectors 't', 'y' must be of same length")
@@ -60,7 +60,7 @@ end
 	return sum
 end
 
-@everywhere function buildDictFromOneVector(vector)
+ function buildDictFromOneVector(vector)
 	kinetic_parameter_vector = vector[1:18]
 	control_parameter_vector=vector[19:38]
 	platelet_parameter_vector=vector[39:44]
@@ -70,7 +70,7 @@ end
 	return dict
 end
 
-@everywhere function buildCompleteDictFromOneVector(vector)
+ function buildCompleteDictFromOneVector(vector)
 	kinetic_parameter_vector = vector[1:18]
 	control_parameter_vector=vector[19:38]
 	platelet_parameter_vector=vector[39:44]
@@ -83,7 +83,7 @@ end
 end
 
 
-@everywhere function createCorrectDict(basic_dict, exp_index)
+ function createCorrectDict(basic_dict, exp_index)
 	if(exp_index==1)
 		
 	elseif(exp_index==2)
@@ -100,7 +100,7 @@ end
 	return basic_dict
 end
 
-@everywhere function generateBestNparameters(n, ec_array, pc_array)
+ function generateBestNparameters(n, ec_array, pc_array)
 	#calculate error
 	best_params = Array[]
 	total_error = sum(ec_array[:,1:end],1)
@@ -125,7 +125,7 @@ end
 
 end
 
-@everywhere function generateNbestPerObjective(n,ec_array, pc_array)
+ function generateNbestPerObjective(n,ec_array, pc_array)
 	num_objectives =size(ec_array,1)
 	best_params=Array{Array}(num_objectives*n)
 	counter = 1
@@ -155,7 +155,7 @@ end
 	return best_params
 end
 
-@everywhere function generateNbestPerObjective(n,ec_array, pc_array,savestring)
+ function generateNbestPerObjective(n,ec_array, pc_array,savestring)
 	num_objectives =size(ec_array,1)
 	best_params=Array{Array}(num_objectives*n)
 	counter = 1
@@ -184,7 +184,7 @@ end
 	return best_params
 end
 
-@everywhere function generateNbestGivenObjective(n,ec_array, pc_array,objectivenum)
+ function generateNbestGivenObjective(n,ec_array, pc_array,objectivenum)
 	num_objectives =size(ec_array,1)
 	best_params=Array{Array}(n)
 	counter = 1
@@ -529,7 +529,7 @@ function checkForDynamics(alldata)
 	return hasdynamics
 end
 
-@everywhere function checkForDynamics(thrombin, t)
+ function checkForDynamics(thrombin, t)
 	threshold = 10 #it has dynamics if it creates 10 thrombin
 	hasdynamics = false
 	mid = thrombin[Int(floor(end/2))] #get the approximate midpoint
@@ -539,7 +539,7 @@ end
 	return hasdynamics
 end
 
-@everywhere function convertToROTEM(t,x, tPA)
+ function convertToROTEM(t,x, tPA)
 	#to work with Differential Equations
 	if(contains(string(typeof(x)), "DiffEqBase"))
 		F = x[12,:]+x[18,:]+ x[19,:]+x[22,:]
@@ -562,21 +562,21 @@ end
 	return A
 end
 
-@everywhere function convertToROTEMPlateletContribution(t,x, tPA,platelet_count)
+ function convertToROTEMPlateletContribution(t,x, tPA,platelet_count)
 	#to work with Differential Equations
-	if(contains(string(typeof(x)), "DiffEqBase"))
+	if(occursin(string(typeof(x)), "DiffEqBase"))
 		F = x[12,:]+x[18,:]+ x[19,:]+x[22,:]
 	else
 		F = [a[12] for a in x]+ [a[18] for a in x]+ [a[19] for a in x]+ [a[22] for a in x] # fibrin related species 12,18,19,22
 	end
 	normal_platelet_count = 300 #*10^6 #/mL
-	A0 = .01 #baseline ROTEM signal
+	A0 = fill(.01, size(F)) #baseline ROTEM signal
 	#K = 2000-375*tPA
 	#K = 2000-200*tPA
 	#K = 5000-375*tPA#-use me on Monday to check predictions
 	#K = 5000-1000*tPA
 	#K = 2000+1125*tPA
-	K = 1000+100*tPA
+	K = fill(1000+100*tPA, size(F))
 	#K = 1
 	n = 2
 	#for infomration about weights
@@ -594,7 +594,7 @@ end
 		#S = 60
 		#S = 1.5
 	end
-	A1 = S
+	A1 = fill(S, size(F))
 	P=platelet_count/normal_platelet_count.*[a[8] for a in x].*[a[12] for a in x]
 #	figure()
 #	plot(t,wf.*F, "r")
@@ -606,7 +606,7 @@ end
 	return A
 end
 
-@everywhere function convertToROTEMPlateletContributionScaledF(t,x, tPA,platelet_count,F0)
+ function convertToROTEMPlateletContributionScaledF(t,x, tPA,platelet_count,F0)
 	#to work with Differential Equations
 	if(contains(string(typeof(x)), "DiffEqBase"))
 		F = x[12,:]+x[18,:]+ x[19,:]+x[22,:]
@@ -648,7 +648,7 @@ end
 	return A
 end
 
-@everywhere function setROTEMIC(tPA, ID)
+ function setROTEMIC(tPA, ID)
 	@show ID
 	pathToData="../data/Viscoelasticmeasurements.xlsx"
 	all_platelets = Dict("3"=>189, "4"=>208, "5"=>210, "6"=>263, "7"=>194, "8"=>190, "9"=>149, "10"=>195)
@@ -665,7 +665,7 @@ end
 	data=readxl(pathToData, datastr)
 	data=Array{Float64}(data)
 	time = data[:,1]
-	avg_run = mean(data[:,2:3],2);
+	avg_run = mean(data[:,2:3],dims=2);
 	exp_data = hcat(time/60, avg_run) #convert to minute from seconds
 	return currPlatelets, exp_data
 end
@@ -1647,7 +1647,7 @@ function checkThermoFeasability(params)
 	
 end
 
-@everywhere function calculateCT(ROTEM_curve,TSIM)
+ function calculateCT(ROTEM_curve,TSIM)
 	#CT-when we first see an increase in diameter to 2mm
 	#for TEG data, R value
 	j = 1
@@ -1664,7 +1664,7 @@ end
 	return CT*60
 end
 
-@everywhere function calculateCFT(ROTEM_curve,TSIM)
+ function calculateCFT(ROTEM_curve,TSIM)
 	#difference between CT and how long it takes to get to 20mm
 	#for TEG data, no equivalent
 	CT = calculateCT(ROTEM_curve,TSIM)
@@ -1687,7 +1687,7 @@ end
 	return CFT
 end
 
-@everywhere function calculateAlpha(ROTEM_curve,TSIM)
+ function calculateAlpha(ROTEM_curve,TSIM)
 	#for TEG, equivalent to calculating angle/alpha
 	CFT = calculateCFT(ROTEM_curve,TSIM)
 	if(CFT ==-1) #if we've not reached 20 mm
@@ -1700,7 +1700,7 @@ end
 	return alpha
 end
 
-@everywhere function calculateFirmnessAtTime(ROTEM_curve,TSIM,tdesired)
+ function calculateFirmnessAtTime(ROTEM_curve,TSIM,tdesired)
 	j =1
 	firmness = -1
 	while(j<maximum(size(ROTEM_curve)))
@@ -1713,7 +1713,7 @@ end
 	return firmness
 end
 
-@everywhere function calculateMCF(ROTEM_curve,TSIM)
+ function calculateMCF(ROTEM_curve,TSIM)
 	#for TEG, MA
 	j = 1
 	MCF = -1
@@ -1723,7 +1723,7 @@ end
 	return MCF
 end
 
-@everywhere function calculateLysisAtTime(ROTEM_curve,TSIM,tdesired)
+ function calculateLysisAtTime(ROTEM_curve,TSIM,tdesired)
 	MCF = calculateMCF(ROTEM_curve,TSIM)
 	later_firmess = calculateFirmnessAtTime(ROTEM_curve,TSIM,tdesired)
 	#@show MCF, later_firmess
@@ -1734,7 +1734,7 @@ end
 	return LI
 end
 
-@everywhere function calculateCommonMetrics(ROTEM_curve,TSIM)
+ function calculateCommonMetrics(ROTEM_curve,TSIM)
 	CT = calculateCT(ROTEM_curve,TSIM)
 	CFT = calculateCFT(ROTEM_curve,TSIM)
 	alpha = calculateAlpha(ROTEM_curve, TSIM)
@@ -1754,9 +1754,9 @@ end
 	return CT,CFT,alpha,MCF,A10,A20,LI30,LI60
 end
 
-@everywhere function checkForFlatness(t,A)
-	tstart=find(x -> x == 10,t)
-	tend =find(x -> x == 55,t)
+ function checkForFlatness(t,A)
+	tstart=findfirst(x -> x == 10,t)
+	tend =findfirst(x -> x == 55,t)
 	#go through in 5 minute intervals, and check for flatness
 	times = 10:5:40
 	threshold = .5

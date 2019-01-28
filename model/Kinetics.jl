@@ -1,11 +1,9 @@
-@everywhere function Kinetics(t,x,PROBLEM_DICTIONARY)
+function Kinetics(t,x,PROBLEM_DICTIONARY)
 	num_rates = 24;
-	idx = find(x->(x<0),x);
-	x[idx] = 0.0;
-
-	idx = find(x->(abs(x)<1E-15),x); #lets make anything less than 1E-9 zero
-	#@show idx
-	x[idx] = 0.0;
+	idx = findall(x->(x<0),x);
+	if(size(idx, 1)>0)
+		x[idx] = zeros(size(idx))
+	end
 	
 	# Alias the species -
 	FII	 = x[1]
@@ -155,11 +153,11 @@
 	time_delay = timing[1]
 	time_coeff = timing[2]
 
-    	rate_vector = zeros(1,num_rates)
+    	rate_vector = similar(x, num_rates)#zeros(1,num_rates)
 	rate_vector[1] = k_trigger*TRIGGER*(FV_FX/(K_trigger + FV_FX))
 	rate_vector[2] = k_amplification*FIIa*(FII/(K_FII_amplification + FII))
-	rate_vector[3] = k_APC_formation*TM*(Float64(PC)/Float64(K_PC_formation + PC))
-	rate_vector[4] = Float64(k_inhibition_ATIII)*Float64(ATIII)*(Float64(FIIa)^1.26)
+	rate_vector[3] = k_APC_formation*TM*((PC)/(K_PC_formation + PC))
+	rate_vector[4] = (k_inhibition_ATIII)*(ATIII)*((FIIa)^1.26)
 	rate_vector[5] = k_complex*FV_FXA*aida/Eps
 	rate_vector[6] = k_amp_prothombinase*PROTHOMBINASE_PLATELETS*FII/(K_FII_amp_prothombinase + FII)
 	rate_vector[7] = k_amp_active_factors*FV_FXA*FII/(K_amp_active_factors+FII)

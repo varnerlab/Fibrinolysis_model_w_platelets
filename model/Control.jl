@@ -1,11 +1,10 @@
-@everywhere function Control(t,x,PROBLEM_DICTIONARY)	
+function Control(t,x,PROBLEM_DICTIONARY)	
 	num_rates = 24;
-	idx = find(x->(x<0),x);
-	x[idx] = 0.0;
-
-	idx = find(x->(abs(x)<1E-15),x); #lets make anything less than 1E-9 zero
-	#@show idx
-	x[idx] = 0.0;
+	idx = findall(x->(x<0),x);
+	if(size(idx, 1)>0)
+		x[idx] = zeros(size(idx))
+	end
+	
 	
 	# Alias the species -
 	FII	 = x[1]
@@ -168,7 +167,8 @@
 	# control_term_fibrinolysis_fXIII -
 	control_term_fibrinolysis_fXIII  = 1 - ((alpha_fib_inh_fXIII.*FXIII).^order_fib_inh_fXIII)./(1+((alpha_fib_inh_fXIII.*FXIII).^order_fib_inh_fXIII))
 
-	control_vector = ones(1,num_rates)
+	control_vector = similar(x, num_rates)#ones(1,num_rates)
+	control_vector[1:end]=fill(1.0, size(control_vector))
 	control_vector[1] = min(initiation_trigger_term,initiation_TFPI_term)
 	control_vector[2] = min(inhibition_term,inhibition_term_TFPI)
 	control_vector[3] = shutdown_term

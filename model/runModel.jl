@@ -1,6 +1,8 @@
 include("Balances.jl")
 include("CoagulationModelFactory.jl")
 include("utilities.jl")
+include("Kinetics.jl")
+include("Control.jl")
 #include("plotData.jl")
 #using Sundials
 using ODE
@@ -250,7 +252,7 @@ function main()
 	#plot(t, interpolatedExperimentalData)
 	estimatedAUC = calculateAUC(t, [a[2] for a in x])
 	experimentalAUC = calculateAUC(t, interpolatedExperimentalData)
-	@printf("MSE: %f, AUC Difference %f", MSE, abs(estimatedAUC-experimentalAUC) )
+	println("MSE: %f, AUC Difference %f", MSE, abs(estimatedAUC-experimentalAUC) )
 	return MSE, abs(estimatedAUC-experimentalAUC)
 end
 
@@ -260,7 +262,7 @@ function plotThrombinWData(t,x,pathToData)
 	#figure()
 	data = readdlm(pathToData)
 	time = data[:,1]
-	avg_run = mean(data[:,2:3],2);
+	avg_run = mean(data[:,2:3],dims=2);
 	plotcolor = "k"
 	#fig = figure(figsize = (15,15))
 	plot(t, [a[2] for a in x], "-", color = plotcolor)
@@ -462,7 +464,7 @@ function runModelWithParams(params)
 end
 
 
-@everywhere function runModelWithParamsReturnAUC(params,tPA)
+function runModelWithParamsReturnAUC(params,tPA)
 	close("all")
 	TSTART = 0.0
 	Ts = .02
@@ -487,7 +489,7 @@ end
 	return AUC
 end
 
-@everywhere function runModelWithParamsReturnA(params,tPA)
+function runModelWithParamsReturnA(params,tPA)
 	TSTART = 0.0
 	Ts = .02
 	if(tPA==0)
@@ -512,7 +514,7 @@ end
 	return t,A
 end
 
-@everywhere function runModelWithParamsSetICReturnAUC(params)
+function runModelWithParamsSetICReturnAUC(params)
 	close("all")
 	TSTART = 0.0
 	Ts = .02
@@ -534,7 +536,7 @@ end
 	return AUC
 end
 
-@everywhere function runModelWithParamsChangeICReturnAUC(params, currIC)
+function runModelWithParamsChangeICReturnAUC(params, currIC)
 	TSTART = 0.0
 	Ts = .02
 	TSTOP=90.0
@@ -554,7 +556,7 @@ end
 	AUC=calculateAUC(t, A)
 end
 
-@everywhere function runModelWithParamsChangeICReturnA(params, currIC)
+function runModelWithParamsChangeICReturnA(params, currIC)
 	TSTART = 0.0
 	Ts = .02
 	TSTOP=90.0
@@ -576,7 +578,7 @@ end
 	return t,A
 end
 
-@everywhere function runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
+function runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
 	TSTART = 0.0
 	Ts = .02
 	TSTOP=90.0
@@ -598,7 +600,7 @@ end
 	return t,A
 end
 
-@everywhere function runModelWithParamsChangeICReturnA(params)
+function runModelWithParamsChangeICReturnA(params)
 	TSTART = 0.0
 	Ts = .02
 	TSTOP=90.0
@@ -618,7 +620,7 @@ end
 	return t,A
 end
 
-@everywhere function runModelWithParamsSetICReturnROTEM(params)
+function runModelWithParamsSetICReturnROTEM(params)
 	close("all")
 	TSTART = 0.0
 	Ts = .02
@@ -641,7 +643,7 @@ end
 	return t,A
 end
 
-@everywhere function runModelWithParamsSetICReturnAUCFibrinIC(params, fibrinIC)
+function runModelWithParamsSetICReturnAUCFibrinIC(params, fibrinIC)
 	close("all")
 	TSTART = 0.0
 	Ts = .02

@@ -6,6 +6,8 @@ include("LOOCVutils.jl")
 using ODE
 using NLopt
 using POETs
+using SharedArrays
+using Distributed
 
 
 #load data once
@@ -14,7 +16,7 @@ using POETs
 pathToData = "../data/fromOrfeo_Thrombin_BL_PRP.txt"
 data = readdlm(pathToData)
 time = data[:,1]
-avg_run = mean(data[:,2:3],2);
+avg_run = mean(data[:,2:3],dims=2);
 experimentaldata = hcat(time/60, avg_run)
 
 #pathsToData = ["../data/ButenasFig1B60nMFVIIa.csv","../data/Buentas1999Fig450PercentProthrombin.txt", "../data/Buentas1999Fig4100PercentProthrombin.txt", "../data/Buentas1999Fig4150PercentProthrombin.txt"]
@@ -38,7 +40,7 @@ function objectiveForPOETSPlatletContribution(parameter_array)
 	Ts = .02
 	count = 1
 	@show parameter_array
-	@sync @parallel for j in selected_idxs
+	@distributed for j in selected_idxs
 		#@show myid(), j
 		temp_params = parameter_array
 		temp_params[47] = all_platelets[j] #set platelets to experimental value
@@ -90,7 +92,7 @@ function objectiveForPOETSPlatletContributionBothCases(parameter_array)
 	Ts = .02
 	count = 1
 	@show parameter_array
-	@sync @parallel for j in selected_idxs
+	@distributed for j in selected_idxs
 		#@show myid(), j
 		temp_params = parameter_array
 		temp_params[47] = all_platelets[j] #set platelets to experimental value
@@ -168,7 +170,7 @@ function objectiveForPOETSPlatletContributionBothCases14D(parameter_array)
 	Ts = .02
 	count = 1
 	@show parameter_array
-	@sync @parallel for j in selected_idxs
+	@distributed for j in selected_idxs
 		#@show myid(), j
 		temp_params = parameter_array
 		temp_params[47] = all_platelets[j] #set platelets to experimental value
@@ -372,11 +374,11 @@ function attemptOptimizationPOETSBothCasesPlateletContributionRestartable(output
 	return (ec_array,pc_array)
 end
 
-allids = collect(9:16)
-leaveoutidx = parse(Int64, ARGS[1])
-leaveoutid = allids[leaveoutidx]
-selids = [allids[1:leaveoutidx-1] ;allids[ leaveoutidx+1:end]]
-outputfilename = string("../LOOCV/POETS_info_23_01_19_PlateletContributionToROTEMFlatness1ToBeTestedOn",strip(string(leaveoutid)))
-@show outputfilename
-attemptOptimizationPOETSOnlytPA2PlateletContributionRestartable(outputfilename, selids)
+#allids = collect(9:16)
+#leaveoutidx = parse(Int64, ARGS[1])
+#leaveoutid = allids[leaveoutidx]
+#selids = [allids[1:leaveoutidx-1] ;allids[ leaveoutidx+1:end]]
+#outputfilename = string("../LOOCV/POETS_info_23_01_19_PlateletContributionToROTEMFlatness1ToBeTestedOn",strip(string(leaveoutid)))
+#@show outputfilename
+#attemptOptimizationPOETSOnlytPA2PlateletContributionRestartable(outputfilename, selids)
 #attemptOptimizationPOETSBothCasesPlateletContributionRestartable(outputfilename, selids)

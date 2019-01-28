@@ -1,4 +1,4 @@
-@everywhere function checkForPreviousAndLoad(outputfilestr)
+function checkForPreviousAndLoad(outputfilestr)
 	outputdir = "../LOOCV/"
 	numObjs = 7
 	allfiles = readdir(outputdir)
@@ -55,7 +55,7 @@
 end
 
 # Generates new parameter array, given current array -
-@everywhere function neighbor_function(parameter_array)
+function neighbor_function(parameter_array)
 	outputfile="parameterEstimation/POETS_28_03_2017.txt"
 	#@show size(parameter_array)
 #	f = open(outputfile, "a")
@@ -82,11 +82,11 @@ end
   return parameter_bounds_function(new_parameter_array,lb_arr, up_arr)
 end
 
-@everywhere function acceptance_probability_function(rank_array,temperature)
+function acceptance_probability_function(rank_array,temperature)
   return (exp(-rank_array[end]/temperature))
 end
 
-@everywhere function cooling_function(temperature)
+function cooling_function(temperature)
 
   # define my new temperature -
   alpha = 0.9
@@ -96,7 +96,7 @@ end
 
 
 # Helper functions -
-@everywhere function parameter_bounds_function(parameter_array,lower_bound_array,upper_bound_array)
+function parameter_bounds_function(parameter_array,lower_bound_array,upper_bound_array)
 
   # reflection_factor -
   epsilon = 0.01
@@ -118,7 +118,7 @@ end
   return new_parameter_array
 end
 
-@everywhere function generateNbestPerObjectiveAndErrors(n,ec_array, pc_array,savestring)
+function generateNbestPerObjectiveAndErrors(n,ec_array, pc_array,savestring)
 	num_objectives =size(ec_array,1)
 	best_params=Array{Array}(num_objectives*n)
 	best_errors =zeros(num_objectives, n)

@@ -7,6 +7,8 @@ include("runModel.jl")
 using ODE
 using PyPlot
 using PyCall
+using DelimitedFiles
+using Statistics
 PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
 
 function basicRunModel()
@@ -27,7 +29,7 @@ function basicRunModel()
 	
 	data = readdlm(pathToData)
 	time = data[:,1]
-	avg_run = mean(data[:,2:3],2);
+	avg_run = mean(data[:,2:3],dims=2);
 	usefuldata = hcat(time, avg_run)
 
 	curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"6")

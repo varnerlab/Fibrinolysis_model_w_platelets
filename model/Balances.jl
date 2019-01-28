@@ -1,9 +1,11 @@
-include("Kinetics.jl")
-include("Control.jl")
+function Balances(t,x,data_dictionary)
+	idx = findall(x->(x<0),x);
+	#@show size(x)
 
-@everywhere function Balances(t,x,data_dictionary)
-	idx_small = find(x.<0)
-	x[idx_small] = 0.0
+#	if(maximum(size(idx))>0)
+#		println("Found zero.")
+#		x[idx] = zeros(size(idx));
+#	end
 	#call the kinetics function
 	rate_array = Kinetics(t,x,data_dictionary)
 	#call the control function
@@ -36,11 +38,14 @@ include("Control.jl")
 	dxdt_total[21] = -rate_array[17]-rate_array[18]-rate_array[19]   # 21 PAI_1
 	dxdt_total[22] = 1.0*rate_array[10]-rate_array[12]-rate_array[20]# 22 Fibers
 
-	idx = find(x->(x<0),x);
+	idx = findall(x->(x<0),x);
+	#@show idx
+	if(size(idx, 1)>0)
+		#@show idx
+		x[idx] = zeros(size(idx));
+		dxdt_total[idx]= zeros(size(idx));
+	end
 	#@show t, 7400-(x[12]+x[22]+x[18]+x[19])
-	x[idx] = 0.0;
-	dxdt_total[idx]= 0.0
-
 
 	#adjust for mixing delay
 	FIIa = x[2]
