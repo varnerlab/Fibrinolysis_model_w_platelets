@@ -457,23 +457,23 @@ function setCompleteModelIC(IC, patient_id)
 #		IC[14]=IC[14]*1.2
 		IC[20]=IC[20]*.85
 	elseif(patient_id==6)
-		IC[1]=IC[1]*.65				
-		IC[3]=IC[3]*1.2
-		IC[5] = IC[5]*1.2
+		#IC[1]=IC[1]*.65				
+		#IC[3]=IC[3]*1.2
+	#	IC[5] = IC[5]*1.2
 #		IC[6]=IC[6]*1.2
 #		IC[9] = IC[9]*.8
-		IC[14] = IC[14]*.95
+	#	IC[14] = IC[14]*.95
 #		IC[15] = IC[15]*1.25
 	elseif(patient_id==7)
 #		IC[1] = IC[1]*.8
 #		IC[3] = IC[3]*1.2
 #		IC[5] = IC[5]*1.2
-		IC[14] = IC[14]*1.1
+#		IC[14] = IC[14]*1.1
 #		IC[20]=IC[20]*.75
 	elseif(patient_id==8)
-		IC[1]= IC[1]*.8
-		IC[3] = IC[3]*1.2
-		IC[5] = IC[5]*1.2
+#		IC[1]= IC[1]*.8
+#		IC[3] = IC[3]*1.2
+#		IC[5] = IC[5]*1.2
 #		IC[15] = IC[15]*1.2
 #		IC[20]=IC[20]*.75
 #		IC[3] = IC[3]*1.2
@@ -496,13 +496,22 @@ end
 
 function setICsBasedOnNM(initial_condition_vector, patient_id)
 	basestr = "../parameterEstimation/ICEstimation/MinimumICsForPatient"
-	filestr = string(basestr, patient_id, "usingParametersFrom_05_12_18UsingNM_W15Evals.txt")
+	if(patient_id==6 || patient_id==7 ||patient_id==8)
+		#set manually
+		params =setCompleteModelIC(initial_condition_vector, patient_id)
+		return params
+	else
+		filestr = string(basestr, patient_id, "usingParametersFrom_05_12_18UsingNM_W15Evals.txt")
+	end
+	@show filestr
+	params = [] #appearently, need to define params before try catch statement
 	try 
 		params = readdlm(filestr, '\n')
 	catch 
 		println("No file found-will use unadjusted ICS")
 		params = initial_condition_vector
 	end
+	#@show size(params)
 	return params
 end
 
@@ -718,72 +727,6 @@ function makeAllEstimatedCurves()
 	end
 end
 
-function makeTrainingFigure()
-	font2 = Dict("family"=>"sans-serif",
-	    "color"=>"black",
-	    "weight"=>"normal",
-	    "size"=>20)
-	close("all")
-	#pathToParams="parameterEstimation/Best11OverallParameters_19_04_2017.txt"
-	POETs_data = "parameterEstimation/POETS_info_24_05_2017maxstep1_OriginalShapeFunction.txt"
-	ec,pc,ra=parsePOETsoutput(POETs_data)
-	ids = [5,6,7,8]
-	tPAs = [0,2]
-	close("all")
-	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
-	counter = 1
-	numParamSets = 15
-	for j in collect(1:size(ids,1))
-		for k in collect(1:size(tPAs,1))
-			#savestr = string("figures/Patient", ids[j], "_tPA=", tPAs[k], "_18_04_2017.pdf")
-			savestr = string("figures/Patient", ids[j], "_tPA=", tPAs[k], "_26_03_2018.pdf")
-			bestparams=generateNbestGivenObjective(numParamSets,ec, pc,counter)
-			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParams(bestparams, ids[j], tPAs[k], savestr)
-			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
-			@show counter
-			curraxis=axarr[j,k]
-			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
-			curraxis[:plot](t, transpose(meanROTEM), "k")
-			upper = transpose(meanROTEM+stdROTEM)
-			lower = transpose(meanROTEM-stdROTEM)
-			curraxis[:fill_between]((t), vec(upper), vec(lower), color = ".5", alpha =.5)
-			curraxis[:plot](expdata[:,1], expdata[:,2], ".k")
-			if(mod(counter,2)==1)
-				curraxis[:set_ylim](0, 70)
-				curraxis[:set_xlim](0,TSIM[end])
-				currasix[:set_ylabel](string("Patient ", ids[j]), fontdict=font2)
-			else
-				axis([0, TSIM[end], 0, 90])
-			end
-
-			if(counter==7 || counter ==8)
-				xlabel("Time, in minutes", fontdict = font2)
-			else
-				ax =gca()
-				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
-			end
-			counter=counter+1
-		end
-	end
-	#label columns
-	annotate("tPA = 0 micromolar",
-               xy=[.12;.95],
-               xycoords="figure fraction",
-               xytext=[.39,0.95],
-               textcoords="figure fraction",
-               ha="right",
-               va="top", fontsize = 24, family = "sans-serif")
-	annotate("tPA = 2 micromolar",
-               xy=[.12;.95],
-               xycoords="figure fraction",
-               xytext=[.85,0.95],
-               textcoords="figure fraction",
-               ha="right",
-               va="top", fontsize = 24, family = "sans-serif")
-
-	savefig(string("figures/trainingFigureUsing",numParamSets, "ParameterSets_22_05_17OriginalShapeFunction.pdf"))
-end
-
 function makeTrainingFigurePlatletContributionToROTEM()
 	font2 = Dict("family"=>"sans-serif",
 	    "color"=>"black",
@@ -812,12 +755,14 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	numParamSets = 2
 	adjustICs = true
 	for j in collect(1:size(ids,1))
+		@show ids[j]
 		for k in collect(1:size(tPAs,1))
 			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_05_12_2018.pdf")
 			bestparams=generateNbestPerObjective(numParamSets,ec,pc)
 			#bestparams=generateBestNparameters(8,ec,pc)
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(bestparams, ids[j], tPAs[k], savestr,adjustICs)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
+			@show norm(meanROTEM), norm(expdata[:,2])
 			@show counter
 			curraxis=axarr[j,k]
 			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
@@ -866,202 +811,6 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_05_12_18PlatletContributionToROTEMICAdjustment=", string(adjustICs),"Best2PerObjNewConversion.pdf"))
 end
 
-function makeTrainingFigurePolymerizedPlatelets()
-	font2 = Dict("family"=>"sans-serif",
-	    "color"=>"black",
-	    "weight"=>"normal",
-	    "size"=>20)
-	close("all")
-	#POETs_data = "../parameterEstimation/POETS_info_28_03_18_PlateletContributionToROTEM.txt"
-	POETs_data="../parameterEstimation/POETS_info_09_04_18_PlateletContributionToROTEMDiffROTEM.txt"
-	ec,pc,ra=parsePOETsoutput(POETs_data)
-	ids = [5,6,7,8]
-	tPAs = [0,2]
-	close("all")
-	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
-	counter = 1
-	numParamSets = 2
-	for j in collect(1:size(ids,1))
-		for k in collect(1:size(tPAs,1))
-			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_28_03_2018.pdf")
-			bestparams=generateNbestPerObjective(numParamSets,ec,pc)
-			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParams(bestparams, ids[j], tPAs[k], savestr)
-			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
-			@show counter
-			curraxis=axarr[j,k]
-			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
-			curraxis[:plot](TSIM, transpose(meanROTEM), "k")
-			upper = transpose(meanROTEM+stdROTEM)
-			lower = transpose(meanROTEM-stdROTEM)
-			curraxis[:fill_between]((TSIM), vec(upper), vec(lower), color = ".5", alpha =.5)
-			curraxis[:plot](expdata[:,1], expdata[:,2], ".k")
-			if(mod(counter,2)==1)
-				curraxis[:set_ylim](0, 70)
-				curraxis[:set_xlim](0,TSIM[end])
-				curraxis[:set_ylabel](string("Patient ", ids[j]), fontdict=font2)
-			else
-				axis([0, TSIM[end], 0, 90])
-			end
-
-			if(counter==7 || counter ==8)
-				xlabel("Time, in minutes", fontdict = font2)
-			else
-				ax =gca()
-				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
-			end
-			counter=counter+1
-		end
-	end
-	#label columns
-	figure(1)
-	annotate("tPA = 0 micromolar",
-               xy=[.12;.95],
-               xycoords="figure fraction",
-               xytext=[.39,0.95],
-               textcoords="figure fraction",
-               ha="right",
-               va="top", fontsize = 24, family = "sans-serif")
-	annotate("tPA = 2 micromolar",
-               xy=[.12;.95],
-               xycoords="figure fraction",
-               xytext=[.85,0.95],
-               textcoords="figure fraction",
-               ha="right",
-               va="top", fontsize = 24, family = "sans-serif")
-
-	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_09_04_18_polymerizedPlateletsBest2PerObj.pdf"))
-end
-
-function makeTrainingFigureBestOveralParams()
-	font2 = Dict(
-	    "color"=>"black",
-	    "weight"=>"normal",
-	    "size"=>20)
-	close("all")
-	pathToParams="../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt"
-	ids = [5,6,7,8]
-	tPAs = [0,2]
-	close("all")
-	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
-	counter = 1
-	for j in collect(1:size(ids,1))
-		for k in collect(1:size(tPAs,1))
-			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_18_04_2017.pdf")
-			datasavestr = string("../generatedData/Patient", ids[j],"_tPA=", tPAs[k], "_31_05_2017.txt" )
-			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicition(pathToParams, ids[j], tPAs[k], savestr)
-			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
-			writetodisk= hcat(TSIM, transpose(meanROTEM), transpose(stdROTEM))
-			writedlm(datasavestr, writetodisk)
-			@show counter
-			curraxis=axarr[j,k]
-			plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
-			if(mod(counter,2)==1)
-				axis([0, TSIM[end], 0, 80])
-				ylabel(string("Patient ", ids[j]), fontdict=font2)
-			else
-				axis([0, TSIM[end], 0, 80])
-			end
-			if(counter==7 || counter ==8)
-				xlabel("Time, in minutes", fontdict = font2)
-			else
-				ax =gca()
-				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
-			end
-			counter=counter+1
-		end
-	end
-	#label columns
-#	annotate("tPA = 0 micromolar",
-#               xy=[.12;.95],
-#               xycoords="figure fraction",
-#               xytext=[.39,0.95],
-#               textcoords="figure fraction",
-#               ha="right",
-#               va="top", fontsize = 24, family = "sans-serif")
-#	annotate("tPA = 2 micromolar",
-#               xy=[.12;.95],
-#               xycoords="figure fraction",
-#               xytext=[.85,0.95],
-#               textcoords="figure fraction",
-#               ha="right",
-#               va="top", fontsize = 24, family = "sans-serif")
-	figure = fig
-	axisarr[1,1][:set_title]("tPA = 0 nanomolar")
-	axisarr[1,2][:set_title]("tPA = 2 nanomolar")
-
-	savefig("../figures/TrainingFigureUsingBest2ParamSetPerObj_25_05_17OriginalShapeFunctionOnlyFittPA2.pdf")
-end
-
-function makePredictionsFigure()
-	font2 = Dict(
-	    "color"=>"black",
-	    "weight"=>"normal",
-	    "size"=>28)
-	close("all")
-	pathToParams="../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt"
-	ids = [3,4,9,10]
-	tPAs = [0,2]
-	close("all")
-	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
-	counter = 1
-	for j in collect(1:size(ids,1))
-		for k in collect(1:size(tPAs,1))
-			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_28_11_2017.pdf")
-			datasavestr = string("../generatedData/Patient", ids[j],"_tPA=", tPAs[k], "_28_11_2017.txt" )
-			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicition(pathToParams, ids[j], tPAs[k], savestr)
-			println("For patient", ids[j], "with ", tPAs[k], "tPA")
-			@show CT,CFT,alpha,MCF,A10,A20,LI30,LI60=calculateCommonMetrics(meanROTEM,TSIM)
-			writetodisk= hcat(TSIM, transpose(meanROTEM), transpose(stdROTEM))
-			writedlm(datasavestr, writetodisk)
-			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
-			#plt[:subplot](size(ids,1),size(tPAs,1),counter)
-			curraxis=axarr[j,k]
-			plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
-			curraxis[:tick_params]("both", labelsize=18)
-			curraxis[:locator_params](nbins = 4, axis = "y")
-			curraxis[:locator_params](nbins = 4, axis = "x")
-			if(mod(counter,2)==1)
-				curraxis[:set_ylim](0, 70)
-				curraxis[:set_xlim](0,TSIM[end])
-				curraxis[:set_ylabel](string("Patient ", ids[j]), fontdict=font2)
-			else
-				curraxis[:set_ylim](0, 80)
-				curraxis[:set_xlim](0,TSIM[end])
-			end
-			if(counter==7 || counter ==8)
-				xlabel("Time, in minutes", fontsize=32)
-			else
-				ax =gca()
-				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
-			end
-			counter=counter+1
-		end
-	end
-	#label columns
-#	annotate("tPA = 0 micromolar",
-#               xy=[.12;.95],
-#               xycoords="figure fraction",
-#               xytext=[.39,0.95],
-#               textcoords="figure fraction",
-#               ha="right",
-#               va="top", fontsize = 24)#, family = "sans-serif")
-#	annotate("tPA = 2 micromolar",
-#               xy=[.12;.95],
-#               xycoords="figure fraction",
-#               xytext=[.85,0.95],
-#               textcoords="figure fraction",
-#               ha="right",
-#               va="top", fontsize = 24)#, family = "sans-serif")
-	axarr[1,1][:set_title]("tPA = 0 nanomolar", fontsize = 32)
-	axarr[1,2][:set_title]("tPA = 2 nanomolar", fontsize =32)
-	axarr[4,1][:set_xlabel]("Time, in minutes",fontsize = 32)
-	axarr[4,2][:set_xlabel]("Time, in minutes",fontsize = 32)
-	fig[:text](0.06, 0.5, "Clot Amplitude (mm) \n", ha="center", va="center", rotation="vertical",fontsize=40)
-
-	figure(1)
-	savefig("../figures/PredictionsFigureUsingBest2ParamSetPerObj_31_05_17OriginalShapeFunctionOnlyFittPA95Percent.pdf")
-end
-
 function makePredictionFigurePlatletContributionToROTEM()
 	#use me
 	font2 = Dict("family"=>"sans-serif",
@@ -1082,13 +831,15 @@ function makePredictionFigurePlatletContributionToROTEM()
 	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
 	counter = 1
 	numParamSets = 2
+	adjustICs=true
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
 			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "WithoutICAdjustment_05_12_18.pdf")
 			bestparams=generateNbestPerObjective(numParamSets,ec,pc)
-			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(bestparams, ids[j], tPAs[k], savestr)
+			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(bestparams, ids[j], tPAs[k], savestr,adjustICs)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
 			@show counter
+			@show norm(meanROTEM), norm(expdata[:,2])
 			curraxis=axarr[j,k]
 			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
 			curraxis[:plot](TSIM, transpose(meanROTEM), "k")
@@ -1134,74 +885,9 @@ function makePredictionFigurePlatletContributionToROTEM()
 	fig[:text](0.5, 0.04, "Time (minutes)", ha="center", va="center", fontsize=40)
 	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
 
-	savefig(string("../figures/PredictionsFigureUsing",numParamSets, "ParameterSets__05_12_18PlatletContributionToROTEMWithICAdjustmentChangedConversion.pdf"))
+	savefig(string("../figures/PredictionsFigureUsing",numParamSets, "ParameterSets_05_12_18PlatletContributionToROTEMWithICAdjustment", adjustICs,"ChangedConversion.pdf"))
 end
 
-function makePredictionFigurePolymerizedPlatelets()
-	font2 = Dict("family"=>"sans-serif",
-	    "color"=>"black",
-	    "weight"=>"normal",
-	    "size"=>20)
-	close("all")
-	#POETs_data = "../parameterEstimation/POETS_info_28_03_18_PlateletContributionToROTEM.txt"
-	POETs_data="../parameterEstimation/POETS_info_09_04_18_PlateletContributionToROTEMDiffROTEM.txt"
-	ec,pc,ra=parsePOETsoutput(POETs_data)
-	ids = [3,4,9,10]
-	tPAs = [0,2]
-	close("all")
-	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
-	counter = 1
-	numParamSets = 2
-	for j in collect(1:size(ids,1))
-		for k in collect(1:size(tPAs,1))
-			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "_28_03_2018.pdf")
-			bestparams=generateNbestPerObjective(numParamSets,ec,pc)
-			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParams(bestparams, ids[j], tPAs[k], savestr)
-			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
-			@show counter
-			curraxis=axarr[j,k]
-			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
-			curraxis[:plot](TSIM, transpose(meanROTEM), "k")
-			upper = transpose(meanROTEM+stdROTEM)
-			lower = transpose(meanROTEM-stdROTEM)
-			curraxis[:fill_between]((TSIM), vec(upper), vec(lower), color = ".5", alpha =.5)
-			curraxis[:plot](expdata[:,1], expdata[:,2], ".k")
-			if(mod(counter,2)==1)
-				curraxis[:set_ylim](0, 70)
-				curraxis[:set_xlim](0,TSIM[end])
-				curraxis[:set_ylabel](string("Patient ", ids[j]), fontdict=font2)
-			else
-				axis([0, TSIM[end], 0, 90])
-			end
-
-			if(counter==7 || counter ==8)
-				xlabel("Time, in minutes", fontdict = font2)
-			else
-				ax =gca()
-				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
-			end
-			counter=counter+1
-		end
-	end
-	#label columns
-	figure(1)
-	annotate("tPA = 0 micromolar",
-               xy=[.12;.95],
-               xycoords="figure fraction",
-               xytext=[.39,0.95],
-               textcoords="figure fraction",
-               ha="right",
-               va="top", fontsize = 24, family = "sans-serif")
-	annotate("tPA = 2 micromolar",
-               xy=[.12;.95],
-               xycoords="figure fraction",
-               xytext=[.85,0.95],
-               textcoords="figure fraction",
-               ha="right",
-               va="top", fontsize = 24, family = "sans-serif")
-
-	savefig(string("../figures/PredictionFigureUsing",numParamSets, "ParameterSets_09_04_18_polymerizedPlateletsBest2PerObj.pdf"))
-end
 
 function testROTEMPredicitionGivenParams(allparams,patient_id,tPA,savestr)
 	numparams = 77
@@ -1288,10 +974,10 @@ function testROTEMPredicitionGivenParamsPlatetContributionToROTEM(allparams,pati
 		currparams[47]=platelet_count
 		dict = buildCompleteDictFromOneVector(currparams)
 		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
-		initial_condition_vector[16]=tPA #set tPA level
 		if(adjustICs==true)
 			initial_condition_vector = setICsBasedOnNM(initial_condition_vector, patient_id)
 		end
+		initial_condition_vector[16]=tPA #set tPA level
 		#initial_condition_vector=setCompleteModelIC(initial_condition_vector,patient_id)
 		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
 		fbalances(t,y)= Balances(t,y,dict)

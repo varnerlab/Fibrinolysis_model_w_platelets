@@ -8,12 +8,13 @@
 	usefulfiles = allfiles[f]
 	#if we don't find anything with the name, we start with the original guesses
 	if(maximum(size(usefulfiles))==0)
-		initial_parameter_array = vec(readdlm("../parameterEstimation/startingPoint_02_05_18.txt"))
+		#initial_parameter_array = vec(readdlm("../parameterEstimation/startingPoint_02_05_18.txt"))
 		#pathToParams="../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt"
 		#allparams = readdlm(pathToParams, '\t')
 		#allparams = readdlm("../parameterEstimation/Best2PerObj_09_04_18.txt")
 		#allparams = readdlm("../parameterEstimation/Best8Overall_03_05_18.txt")
-		#initial_parameter_array = allparams[1,:]
+		allparams = readdlm("../parameterEstimation/Best2PerObjectiveParameters_12_05_18PlateletContributionToROTEM.txt")
+		initial_parameter_array = allparams[1,:]
 		round = 1
 		return initial_parameter_array,round
 	end

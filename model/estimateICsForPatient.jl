@@ -12,6 +12,7 @@ bestparams=generateNbestPerObjective(numParamSets,ec,pc)
 function objectiveICs(params)
 	tPAs = [0,2]
 	totalMSE = 0.0
+	weight = 5.0
 	for tPA in tPAs
 		#run model with current ICs
 		alldata, meanROTEM, stdROTEM, TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(bestparams, patient_id ,tPA, "findingICs.txt", params)
@@ -20,6 +21,14 @@ function objectiveICs(params)
 		platelets,expdata = setROTEMIC(tPA, patient_id)
 		currMSE,interpolatedExperimentalData = calculateMSE(TSIM, meanROTEM, expdata)
 		@show currMSE
+		if(tPA ==0)
+			endMCF = expdata[end,2]
+			@show endMCF
+			endMCFsim = meanROTEM[end]
+			diff = abs(endMCF-endMCFsim)
+			@show diff
+			totalMSE = totalMSE+diff*weight
+		end
 		totalMSE = totalMSE+currMSE	
 	end
 	@show totalMSE, params
@@ -88,7 +97,7 @@ end
 
 function runOptimization(currID)
 	seed =89239
-	numFevals =15
+	numFevals =10
 	global patient_id = currID #change me as nesseccary
 	kin_params = mean(readdlm("../parameterEstimation/best8_02_05_18.txt"),1)
 	d = buildCompleteDictFromOneVector(kin_params)
