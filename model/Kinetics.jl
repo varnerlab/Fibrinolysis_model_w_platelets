@@ -186,5 +186,6 @@ function Kinetics(t,x,PROBLEM_DICTIONARY)
 		end
 	end
 
+	#@show rate_vector[18], tPA, PAI_1
 	return rate_vector
 end

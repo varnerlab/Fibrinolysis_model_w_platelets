@@ -228,7 +228,7 @@ end
     push!(scaling_parameter_vector,1.0)        # 1 Abundance scale
     PROBLEM_DICTIONARY["SCALING_PARAMETER_VECTOR"] = scaling_parameter_vector
 
-   PROBLEM_DICTIONARY["ALEPH"] = initial_condition_vector[2]
+   PROBLEM_DICTIONARY["ALEPH"] = initial_condition_vector[2]+.001
 	PROBLEM_DICTIONARY["TIME_DELAY"]=timing
      # QFactor vector - from simulateFig3Butenas2002
     qualitative_factor_vector =Float64[]
@@ -355,7 +355,7 @@ end
     push!(scaling_parameter_vector,1.0)        # 1 Abundance scale
     PROBLEM_DICTIONARY["SCALING_PARAMETER_VECTOR"] = scaling_parameter_vector
 
-   PROBLEM_DICTIONARY["ALEPH"] = initial_condition_vector[2]
+   PROBLEM_DICTIONARY["ALEPH"] = initial_condition_vector[2]+.001
 	PROBLEM_DICTIONARY["TIME_DELAY"]=timing
      # QFactor vector - from simulateFig3Butenas2002
     qualitative_factor_vector =Float64[]

@@ -4,7 +4,7 @@ function checkForPreviousAndLoad(outputfilestr)
 	allfiles = readdir(outputdir)
 	#find out if we already have a file by this output name
 	endfilestr = outputfilestr[10:end] #chop off first part
-	f=[contains(i,endfilestr) for i in allfiles]
+	f=[occursin(i,endfilestr) for i in allfiles]
 	usefulfiles = allfiles[f]
 	#if we don't find anything with the name, we start with the original guesses
 	if(maximum(size(usefulfiles))==0)
@@ -66,7 +66,7 @@ function neighbor_function(parameter_array)
   number_of_parameters = length(parameter_array)
 
   # calculate new parameters -
-  new_parameter_array = parameter_array.*(1+SIGMA*randn(number_of_parameters))
+  new_parameter_array = parameter_array.*(fill(1, size(parameter_array))+SIGMA*randn(number_of_parameters))
 
   # Check the bound constraints -
   LOWER_BOUND = 0

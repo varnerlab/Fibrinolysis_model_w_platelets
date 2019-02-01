@@ -127,7 +127,8 @@ function makeLoopPlots(t,x)
 	for j in collect(1:size(names,1))
 		plt[:subplot](5,5,j)
 		#@show size([a[j] for a in x])
-		plot(t, [a[j] for a in x], "k")
+		#plot(t, [a[j] for a in x], "k")
+		plot(t, x[j,:], "k")
 		title(names[j])
 	end
 	#savefig("figures/Dec19_BeforeOpt.pdf")
@@ -136,12 +137,15 @@ end
 function plotFibrinSpecies(t,x)
 	selectedidxs = [12,14,18,19,22]
 	legarr = ["Fibrin", "fibrinogen", "fibrin monomer", "protofibril", "Fiber", "Sum of Clot Forming Species"]
-	sumofspecies = zeros(size(a[18] for a in x))
+	#sumofspecies = zeros(size(a[18] for a in x))
+	sumofspecies = zeros(size(x[18,:]))
 	for j in selectedidxs
-			@show j
-			semilogy(t, [a[j] for a in x])
+			#@show j
+			#semilogy(t, [a[j] for a in x])
+			semilogy(t, x[j,:])
 			if(j !=14)
-				sumofspecies= sumofspecies +[a[j] for a in x]
+				#sumofspecies= sumofspecies +[a[j] for a in x]
+				sumofspecies =sumofspecies+x[j,:]
 			end
 	end
 	semilogy(t, sumofspecies)
@@ -265,7 +269,8 @@ function plotThrombinWData(t,x,pathToData)
 	avg_run = mean(data[:,2:3],dims=2);
 	plotcolor = "k"
 	#fig = figure(figsize = (15,15))
-	plot(t, [a[2] for a in x], "-", color = plotcolor)
+	#plot(t, [a[2] for a in x], "-", color = plotcolor)
+	plot(t, x[2,:],"-", color = plotcolor)
 	plot(time/60, avg_run, ".", color = plotcolor)
 	ylabel("Thrombin Concentration, nM")
 	xlabel("Time, in minutes")

@@ -4,7 +4,8 @@ include("utilities.jl")
 include("plotData.jl")
 include("runModel.jl")
 #using Sundials
-using ODE
+#using ODE
+using DifferentialEquations
 using PyPlot
 using PyCall
 using DelimitedFiles
@@ -33,7 +34,6 @@ function basicRunModel()
 	usefuldata = hcat(time, avg_run)
 
 	curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"6")
-	fig = figure(figsize = (15,15))
 	@show curr_platelets
 	params[47]=curr_platelets
 	dict = buildCompleteDictFromOneVector(params)
@@ -42,9 +42,15 @@ function basicRunModel()
 	initial_condition_vector[16]=tPA
 	#initial_condition_vector[14]=initial_condition_vector[14]/2
 	@show initial_condition_vector
+	fbalances(y,p,t)= Balances(t,y,dict) 
 	#fbalances(t,y)= Balances(t,y,dict) 
-	fbalances(t,y)= Balances(t,y,dict) 
-	t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
+	#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
+	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+	@time sol = solve(prob)
+	t =sol.t
+	X = sol
+	#print(X)
+	fig = figure(figsize = (15,15))
 	plotThrombinWData(t,X,pathToData)
 	figure()
 	plotFibrinSpecies(t,X)

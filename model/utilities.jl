@@ -4,6 +4,7 @@ using ExcelReaders
 #using PyCall
 #PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
 using Distances #for calculated eucliedian distance
+using LinearAlgebra
 
  function calculateMSE(t,predictedCurve, experimentalData)
 	num_points = size(t,1)
@@ -127,7 +128,9 @@ end
 
  function generateNbestPerObjective(n,ec_array, pc_array)
 	num_objectives =size(ec_array,1)
-	best_params=Array{Array}(num_objectives*n)
+	#best_params=Array{Array}(num_objectives*n)
+	best_params=zeros(num_objectives*n,size(pc_array,1))
+	#best_params =Array{Array, num_objectives*n}
 	counter = 1
 	for j in collect(1:num_objectives)
 		curr_error=ec_array[j,:]
@@ -136,9 +139,10 @@ end
 		for k in collect(1:n)
 			allidx = collect(1:size(pc_array,2))
 			removed = allidx
-			min_index = indmin(curr_error)
+			#min_index = indmin(curr_error)
+			min_index = argmin(curr_error)
 			curr_best_params = pc_array[:,min_index]
-			best_params[counter] = curr_best_params
+			best_params[counter,:] = curr_best_params
 			removed = deleteat!(removed, min_index)
 			@show min_index, ec_array[:,min_index]
 			#@show curr_best_params
@@ -245,7 +249,8 @@ end
 
 function parsePOETsoutput(filename)
 	f = open(filename)
-	alltext = readstring(f)
+	#alltext = readstring(f)
+	alltext = read(f, String)
 	close(f)
 
 	outputname = "textparsing.txt"
@@ -255,11 +260,12 @@ function parsePOETsoutput(filename)
   	pc_array = zeros(number_of_parameters)
 	rank_array = zeros(1)	
 	counter =1
-	for grouping in matchall(r"\[([^]]+)\]", alltext)
-		cleanedgrouping = replace(grouping, "[", "")
-		nocommas = replace(cleanedgrouping, ","," ")
-		allcleaned = replace(nocommas, "]", "")
-		allcleaned = replace(allcleaned, ";", "\n")
+	#for grouping in matchall(r"\[([^]]+)\]", alltext)
+	for grouping in collect(m.match for m in eachmatch(r"\[([^]]+)\]", alltext))
+		cleanedgrouping = replace(grouping, "["=>"")
+		nocommas = replace(cleanedgrouping, ","=>" ")
+		allcleaned = replace(nocommas, "]"=>"")
+		allcleaned = replace(allcleaned, ";"=>"\n")
 		outfile = open(outputname, "w")
 		write(outfile, allcleaned)
 		close(outfile)
@@ -564,7 +570,8 @@ end
 
  function convertToROTEMPlateletContribution(t,x, tPA,platelet_count)
 	#to work with Differential Equations
-	if(occursin(string(typeof(x)), "DiffEqBase"))
+	#@show typeof(x)
+	if(occursin("DiffEq",string(typeof(x))))
 		F = x[12,:]+x[18,:]+ x[19,:]+x[22,:]
 	else
 		F = [a[12] for a in x]+ [a[18] for a in x]+ [a[19] for a in x]+ [a[22] for a in x] # fibrin related species 12,18,19,22
@@ -595,7 +602,12 @@ end
 		#S = 1.5
 	end
 	A1 = fill(S, size(F))
-	P=platelet_count/normal_platelet_count.*[a[8] for a in x].*[a[12] for a in x]
+	if(occursin("DiffEq", string(typeof(x))))
+		print("here!")
+		P=platelet_count/normal_platelet_count.*vec(x[8,:]).*vec(x[12,:])
+	else
+		P=platelet_count/normal_platelet_count.*[a[8] for a in x].*[a[12] for a in x]
+	end
 #	figure()
 #	plot(t,wf.*F, "r")
 #	plot(t, wp.*P, "g")
@@ -674,13 +686,13 @@ function plotAverageROTEMWData(t,meanROTEM,stdROTEM,expdata, savestr)
 	fig = figure(figsize = (15,15))
 	ylabel("ROTEM")
 	xlabel("Time, in minutes")
-	plot(t, transpose(meanROTEM), "k")
+	plot(t, vec(meanROTEM), "k")
 	axis([0, t[end], 0, 100])
 	@show size(meanROTEM)
 	@show size(stdROTEM)
 	@show size(t)
-	upper = transpose(meanROTEM+stdROTEM)
-	lower = transpose(meanROTEM-stdROTEM)
+	upper = vec(meanROTEM+stdROTEM)
+	lower = vec(meanROTEM-stdROTEM)
 	@show size(vec(upper))
 	@show size(vec(lower))
 	fill_between((t), vec(upper), vec(lower), color = ".5", alpha =.5)
@@ -766,9 +778,9 @@ function makeTrainingFigurePlatletContributionToROTEM()
 			@show counter
 			curraxis=axarr[j,k]
 			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
-			curraxis[:plot](TSIM, transpose(meanROTEM), "k")
-			upper = transpose(meanROTEM+stdROTEM)
-			lower = transpose(meanROTEM-stdROTEM)
+			curraxis[:plot](TSIM, vec(meanROTEM), "k")
+			upper = vec(meanROTEM+stdROTEM)
+			lower = vec(meanROTEM-stdROTEM)
 			curraxis[:fill_between]((TSIM), vec(upper), vec(lower), color = ".5", alpha =.5)
 			curraxis[:plot](expdata[:,1], expdata[:,2], ".k")
 			if(mod(counter,2)==1)
@@ -808,7 +820,7 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	fig[:text](0.5, 0.04, "Time (minutes)", ha="center", va="center", fontsize=40)
 	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
 
-	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_05_12_18PlatletContributionToROTEMICAdjustment=", string(adjustICs),"Best2PerObjNewConversion.pdf"))
+	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_05_12_18PlatletContributionToROTEMICAdjustment=", string(adjustICs),"Best2PerObjNewConversionUsingDE.pdf"))
 end
 
 function makePredictionFigurePlatletContributionToROTEM()
@@ -885,7 +897,7 @@ function makePredictionFigurePlatletContributionToROTEM()
 	fig[:text](0.5, 0.04, "Time (minutes)", ha="center", va="center", fontsize=40)
 	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
 
-	savefig(string("../figures/PredictionsFigureUsing",numParamSets, "ParameterSets_05_12_18PlatletContributionToROTEMWithICAdjustment", adjustICs,"ChangedConversion.pdf"))
+	savefig(string("../figures/PredictionsFigureUsing",numParamSets, "ParameterSets_05_12_18PlatletContributionToROTEMWithICAdjustment", adjustICs,"ChangedConversionUsingDE.pdf"))
 end
 
 
@@ -926,9 +938,9 @@ function testROTEMPredicitionGivenParams(allparams,patient_id,tPA,savestr)
 		initial_condition_vector=setCompleteModelIC(initial_condition_vector,patient_id)
 		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
 		fbalances(t,y)= Balances(t,y,dict)
-		tic() 
+		#tic() 
 		t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
-		toc()	
+		#toc()	
 		#@show size([a[2] for a in X])
 		#A = convertToROTEM(t,X,tPA)
 		alldata=vcat(alldata,transpose(A))
@@ -980,17 +992,24 @@ function testROTEMPredicitionGivenParamsPlatetContributionToROTEM(allparams,pati
 		initial_condition_vector[16]=tPA #set tPA level
 		#initial_condition_vector=setCompleteModelIC(initial_condition_vector,patient_id)
 		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
-		fbalances(t,y)= Balances(t,y,dict)
-		tic() 
-		t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
-		toc()	
+		fbalances(y,p,t)= Balances(t,y,dict) 
+		#fbalances(t,y)= Balances(t,y,dict) 
+		#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
+		prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+		@time sol = solve(prob, saveat=.02)
+		t = sol.t
+		X=sol	
 		#@show size([a[2] for a in X])
 		A = convertToROTEMPlateletContribution(t,X,tPA,platelet_count)
 		@show size(A), size(TSIM)
 		while(size(A)!=size(TSIM))
-			tic() 
-			t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
-			toc()	
+			fbalances(y,p,t)= Balances(t,y,dict) 
+			#fbalances(t,y)= Balances(t,y,dict) 
+			#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
+			prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+			@time sol = solve(prob,saveat=.02)
+			t = sol.t
+			X=sol	
 			#@show size([a[2] for a in X])
 			A = convertToROTEMPlateletContribution(t,X,tPA,platelet_count)
 		end
@@ -999,8 +1018,8 @@ function testROTEMPredicitionGivenParamsPlatetContributionToROTEM(allparams,pati
 	end
 	alldata = alldata[2:end, :] #remove row of zeros
 	alldata = map(Float64,alldata)
-	meanROTEM = mean(alldata,1)
-	stdROTEM = std(alldata,1)
+	meanROTEM = mean(alldata,dims=1)
+	stdROTEM = std(alldata,dims=1)
 	plotAverageROTEMWData(TSIM, meanROTEM, stdROTEM, usefuldata,savestr)
 	return alldata, meanROTEM, stdROTEM, TSIM
 end
@@ -1758,10 +1777,10 @@ end
 	tstart=findfirst(x -> x == 10,t)
 	tend =findfirst(x -> x == 55,t)
 	#go through in 5 minute intervals, and check for flatness
-	times = 10:5:40
+	times = 10:5:55
 	threshold = .5
 	flats = [] #if an interval is flat, gets true. Else, false
-	if (maximum(size(t))<=1) #if t is of size 1, we didn't solve properly, so this param set is bad
+	if (maximum(size(t))<=1 || t[end]<55) #if t is of size 1, we didn't solve properly, so this param set is bad
 		AnyFlats = true
 		return AnyFlats
 	else	
@@ -1771,10 +1790,15 @@ end
 
 			tstartidx = findfirst(x -> x >= tstart,t)
 			tendidx = findfirst(x -> x >= tend,t)
-
 			#@show tstartidx,tendidx, tstart, tend
+			#deal with failure
+#			if(maximum(size(tstartidx))==0 || maximum(size(tendidx))==0)
+#				AnyFlats = true
+#				return AnyFlats
+#			end
 			tstartidx = tstartidx[1]
 			tendidx=tendidx[1]
+			#@show tstartidx,tendidx, tstart, tend
 			if(tstartidx ==0 && tendidx==0)
 				AnyFlats = true
 				return AnyFlats

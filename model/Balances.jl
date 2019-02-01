@@ -1,4 +1,6 @@
 function Balances(t,x,data_dictionary)
+#function Balances(dxdt_total, x, data_dictionary,t)
+	#@show t
 	idx = findall(x->(x<0),x);
 	#@show size(x)
 
@@ -55,15 +57,18 @@ function Balances(t,x,data_dictionary)
 	time_coeff = timing[2]
 	aleph = data_dictionary["ALEPH"]
 
+	#@show FIIa, aleph, time_coeff
 	tau = time_coeff*(1-FIIa/aleph)
 	time_scale =1-1*exp(-tau*(t-time_delay))
+	#@show tau, time_scale
 
 	if(t<time_delay)
 		time_scale = 0.0
 		#@show t, time_scale, time_delaye
 	end
-
+	#@show dxdt_total
+	#@show time_scale
 	dxdt_total = dxdt_total.*time_scale
-
+	#@show dxdt_total
 	return dxdt_total
 end
