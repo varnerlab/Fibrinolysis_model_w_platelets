@@ -5,6 +5,9 @@ using ExcelReaders
 #PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
 using Distances #for calculated eucliedian distance
 using LinearAlgebra
+using DelimitedFiles
+using Statistics
+using DifferentialEquations
 
  function calculateMSE(t,predictedCurve, experimentalData)
 	num_points = size(t,1)
@@ -756,7 +759,8 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	#POETs_data ="../parameterEstimation/POETS_info_12_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
 	#POETs_data = "../parameterEstimation/POETS_info_15_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
 	#POETs_data = "../parameterEstimation/POETS_info_19_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"''
-	POETs_data = "../parameterEstimation/POETS_info_05_12_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+	#POETs_data = "../parameterEstimation/POETS_info_05_12_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+	POETs_data ="../parameterEstimation/POETS_info_02_01_19_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
 
 	ec,pc,ra=parsePOETsoutput(POETs_data)
 	ids = [5,6,7,8]
@@ -764,7 +768,7 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	close("all")
 	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
 	counter = 1
-	numParamSets = 2
+	numParamSets = 4
 	adjustICs = true
 	for j in collect(1:size(ids,1))
 		@show ids[j]
@@ -820,7 +824,7 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	fig[:text](0.5, 0.04, "Time (minutes)", ha="center", va="center", fontsize=40)
 	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
 
-	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_05_12_18PlatletContributionToROTEMICAdjustment=", string(adjustICs),"Best2PerObjNewConversionUsingDE.pdf"))
+	savefig(string("../figures/trainingFigureUsing",numParamSets, "ParameterSets_02_01_19PlatletContributionToROTEMICAdjustment=", string(adjustICs),"Best2PerObjNewConversionUsingDE.pdf"))
 end
 
 function makePredictionFigurePlatletContributionToROTEM()
@@ -835,7 +839,8 @@ function makePredictionFigurePlatletContributionToROTEM()
 	#POETs_data ="../parameterEstimation/POETS_info_19_04_18_PlateletContributionToROTEM.txt"
 	#POETs_data="../parameterEstimation/POETS_info_09_04_18_PlateletContributionToROTEMDiffROTEM.txt"
 	#POETs_data= "../parameterEstimation/POETS_info_02_05_18_PlateletContributionToROTEMFlatness1.txt"
-	POETs_data = "../parameterEstimation/POETS_info_05_12_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+	#POETs_data = "../parameterEstimation/POETS_info_05_12_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+	POETs_data ="../parameterEstimation/POETS_info_02_01_19_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
 	ec,pc,ra=parsePOETsoutput(POETs_data)
 	ids = [3,4,9,10]
 	tPAs = [0,2]
@@ -843,7 +848,7 @@ function makePredictionFigurePlatletContributionToROTEM()
 	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
 	counter = 1
 	numParamSets = 2
-	adjustICs=true
+	adjustICs=false
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
 			savestr = string("../figures/Patient", ids[j], "_tPA=", tPAs[k], "WithoutICAdjustment_05_12_18.pdf")
@@ -854,9 +859,9 @@ function makePredictionFigurePlatletContributionToROTEM()
 			@show norm(meanROTEM), norm(expdata[:,2])
 			curraxis=axarr[j,k]
 			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
-			curraxis[:plot](TSIM, transpose(meanROTEM), "k")
-			upper = transpose(meanROTEM+stdROTEM)
-			lower = transpose(meanROTEM-stdROTEM)
+			curraxis[:plot](TSIM, vec(meanROTEM), "k")
+			upper = vec(meanROTEM+stdROTEM)
+			lower = vec(meanROTEM-stdROTEM)
 			curraxis[:fill_between]((TSIM), vec(upper), vec(lower), color = ".5", alpha =.5)
 			curraxis[:plot](expdata[:,1], expdata[:,2], ".k")
 			if(mod(counter,2)==1)
@@ -897,7 +902,7 @@ function makePredictionFigurePlatletContributionToROTEM()
 	fig[:text](0.5, 0.04, "Time (minutes)", ha="center", va="center", fontsize=40)
 	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
 
-	savefig(string("../figures/PredictionsFigureUsing",numParamSets, "ParameterSets_05_12_18PlatletContributionToROTEMWithICAdjustment", adjustICs,"ChangedConversionUsingDE.pdf"))
+	savefig(string("../figures/PredictionsFigureUsing",numParamSets, "ParameterSets_01_02_19PlatletContributionToROTEMWithICAdjustment", adjustICs,"ChangedConversionUsingDE.pdf"))
 end
 
 
@@ -995,8 +1000,8 @@ function testROTEMPredicitionGivenParamsPlatetContributionToROTEM(allparams,pati
 		fbalances(y,p,t)= Balances(t,y,dict) 
 		#fbalances(t,y)= Balances(t,y,dict) 
 		#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
-		prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-		@time sol = solve(prob, saveat=.02)
+		prob = DifferentialEquations.ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+		@time sol = DifferentialEquations.solve(prob, saveat=.02)
 		t = sol.t
 		X=sol	
 		#@show size([a[2] for a in X])
@@ -1774,13 +1779,15 @@ end
 end
 
  function checkForFlatness(t,A)
-	tstart=findfirst(x -> x == 10,t)
-	tend =findfirst(x -> x == 55,t)
+	tstartcheck =10.0
+	tendcheck = 55.0
+	tstart=findfirst(x -> x == tstartcheck,t)
+	tend =findfirst(x -> x == tendcheck,t)
 	#go through in 5 minute intervals, and check for flatness
-	times = 10:5:55
-	threshold = .5
+	times = tstartcheck:5:tendcheck
+	threshold = 1.0
 	flats = [] #if an interval is flat, gets true. Else, false
-	if (maximum(size(t))<=1 || t[end]<55) #if t is of size 1, we didn't solve properly, so this param set is bad
+	if (maximum(size(t))<=1 || t[end]<tendcheck) #if t is of size 1, we didn't solve properly, so this param set is bad
 		AnyFlats = true
 		return AnyFlats
 	else	
@@ -1809,7 +1816,7 @@ end
 			#check for change
 			Amin = minimum(Aslice)
 			Amax = maximum(Aslice)
-			#@show Amin, Amax
+			#@show Amin, Amax, tstart, tend
 
 			if(abs(Amax-Amin)>threshold)
 				push!(flats, false)

@@ -1,12 +1,18 @@
-include("Balances.jl")
-include("CoagulationModelFactory.jl")
-include("utilities.jl")
-include("LOOCVutils.jl")
+@everywhere include("Balances.jl")
+@everywhere include("Kinetics.jl")
+@everywhere include("Control.jl")
+@everywhere include("CoagulationModelFactory.jl")
+@everywhere include("utilities.jl")
+@everywhere include("LOOCVutils.jl")
 #using Sundials
-using ODE
+#using ODE
+using DifferentialEquations
 using NLopt
 using POETs
-
+using DelimitedFiles
+using Statistics
+using SharedArrays
+using Distributed
 
 #load data once
 #experimentaldata = readdlm("../data/ButenasFig1B60nMFVIIa.csv", ',')
@@ -14,7 +20,7 @@ using POETs
 pathToData = "../data/fromOrfeo_Thrombin_BL_PRP.txt"
 data = readdlm(pathToData)
 time = data[:,1]
-avg_run = mean(data[:,2:3],2);
+avg_run = mean(data[:,2:3],dims=2);
 experimentaldata = hcat(time/60, avg_run)
 
 #pathsToData = ["../data/ButenasFig1B60nMFVIIa.csv","../data/Buentas1999Fig450PercentProthrombin.txt", "../data/Buentas1999Fig4100PercentProthrombin.txt", "../data/Buentas1999Fig4150PercentProthrombin.txt"]
@@ -32,14 +38,13 @@ end
 selected_idxs = [11,12,13,14]
 
 function objectiveForPOETS(parameter_array)
-	tic()
-	obj_array = SharedArray(Float64,4,1)
+	obj_array = SharedArray{Float64}(4,1)
 	#obj_array=10^7*ones(8,1)
 	TSTART = 0.0
 	Ts = .02
 	count = 1
 	@show parameter_array
-	@sync @parallel for j in selected_idxs
+	@sync @distributed for j in selected_idxs
 		#@show myid(), j
 		temp_params = parameter_array
 		temp_params[47] = all_platelets[j] #set platelets to experimental value
@@ -68,25 +73,24 @@ function objectiveForPOETS(parameter_array)
 			MSE =10^7 #if it doesn't generate dynamics, make this parameter set very unfavorable
 		end
 		@show myid(), count,MSE
-		obj_array[findin(selected_idxs,j),1]=MSE
+		obj_array[findall(x->x==j,selected_idxs)[1],1]=MSE
 		count = count+1
 		#@show obj_array
 	end
 	@show obj_array
 	#@show size(parameter_array)
-	toc()
 	return obj_array
 end
 
 function objectiveForPOETSPlatletContribution(parameter_array)
-	tic()
-	obj_array = SharedArray(Float64,4,1)
+	obj_array = SharedArray{Float64}(4,1)
 	#obj_array=10^7*ones(8,1)
 	TSTART = 0.0
 	Ts = .02
 	count = 1
 	@show parameter_array
-	@sync @parallel for j in selected_idxs
+	#@sync @distributed for j in selected_idxs
+	@sync @distributed for j in selected_idxs
 		@show myid(), j
 		temp_params = parameter_array
 		temp_params[47] = all_platelets[j] #set platelets to experimental value
@@ -102,11 +106,20 @@ function objectiveForPOETSPlatletContribution(parameter_array)
 			tPA = 2.0
 		end
 		TSIM = collect(TSTART:Ts:TSTOP)
-		fbalances(t,y)= Balances(t,y,dict) 
 		#t,X = ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep=1E-9)
-		t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0)
-		FIIa = [a[2] for a in X]
-		fibrinogen = [a[14] for a in X]
+		#t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0)
+		fbalances(y,p,t)= Balances(t,y,dict) 
+		#fbalances(t,y)= Balances(t,y,dict) 
+		#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
+		prob = DifferentialEquations.ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+		@time sol = DifferentialEquations.solve(prob)
+		t =sol.t
+		X = sol
+		#FIIa = [a[2] for a in X]
+		FIIa =X[2,:]
+		#fibrinogen = [a[14] for a in X]
+		fibrinogen = X[14,:]
+		#@show maximum(FIIa), maximum(X[12,:])
 		A = convertToROTEMPlateletContribution(t,X,tPA,all_platelets[j])
 		AnyFlats=checkForFlatness(t,A)
 		hasdynamics=checkForDynamics(FIIa, t)
@@ -115,30 +128,30 @@ function objectiveForPOETSPlatletContribution(parameter_array)
 		if(hasdynamics && fibrinogen[end]<370 && AnyFlats==false)
 			print("has dynamics")
 			MSE, interpData = calculateMSE(t,A, allexperimentaldata[j])
+			@show MSE
 		else
 			MSE =10^7 #if it doesn't generate dynamics, make this parameter set very unfavorable
 		end
 		#check to make sure we used up fibrinogen, penalize if we haven't
 		@show myid(), count,MSE
-		obj_array[findin(selected_idxs,j),1]=MSE
+		obj_array[findall(x->x==j,selected_idxs)[1],1]=MSE
 		count = count+1
 		#@show obj_array
 	end
 	@show obj_array
 	#@show size(parameter_array)
-	toc()
 	return obj_array
 end
 
 function objectiveForPOETSPlatletContributionDiffROTEM(parameter_array)
-	tic()
-	obj_array = SharedArray(Float64,4,1)
+	
+	obj_array = SharedArray{Float64}(4,1)
 	#obj_array=10^7*ones(8,1)
 	TSTART = 0.0
 	Ts = .02
 	count = 1
 	@show parameter_array
-	@sync @parallel for j in selected_idxs
+	@sync @distributed for j in selected_idxs
 		#@show myid(), j
 		temp_params = parameter_array
 		temp_params[47] = all_platelets[j] #set platelets to experimental value
@@ -167,13 +180,13 @@ function objectiveForPOETSPlatletContributionDiffROTEM(parameter_array)
 			MSE =10^7 #if it doesn't generate dynamics, make this parameter set very unfavorable
 		end
 		@show myid(), count,MSE
-		obj_array[findin(selected_idxs,j),1]=MSE
+		obj_array[findall(x->x==j,selected_idxs)[1],1]=MSE
 		count = count+1
 		#@show obj_array
 	end
 	@show obj_array
 	#@show size(parameter_array)
-	toc()
+
 	return obj_array
 end
 
@@ -220,9 +233,13 @@ function attemptOptimizationPOETSOnlytPA2PlateletContribution()
 	#initial_parameter_estimate = vec(readdlm("../parameterEstimation/startingPoint_19_4_18.txt"))
 	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_25_04_18.txt"))
 	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_29_04_18.txt"))
-	initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_02_05_18.txt"))
+	#initial_parameter_estimate= vec(readdlm("../parameterEstimation/startingPoint_02_05_18.txt"))
+	allparams = readdlm("../parameterEstimation/Best2PerObjectiveParameters_12_05_18PlateletContributionToROTEM.txt", '\t')
+	params = allparams[4,:]
+	initial_parameter_estimate=params
 	#outputfile = "../parameterEstimation/POETS_info_19_10_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
-	outputfile = "../parameterEstimation/POETS_info_05_12_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+	#outputfile = "../parameterEstimation/POETS_info_05_12_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+	outputfile = "../parameterEstimation/POETS_info_02_01_19_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
 	ec_array = zeros(number_of_objectives)
 	pc_array = zeros(number_of_parameters)
 	#bound thrombin generation parameters more tightly than fibrinolysis ones

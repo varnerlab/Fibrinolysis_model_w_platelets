@@ -5,7 +5,8 @@ include("Kinetics.jl")
 include("Control.jl")
 #include("plotData.jl")
 #using Sundials
-using ODE
+#using ODE
+using DifferentialEquations
 #using PyPlot
 #using PyCall
 #PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
