@@ -158,7 +158,7 @@ end
 			counter=counter+1
 		end
 	end	
-	writedlm(string("../parameterEstimation/Best", n, "PerObjectiveParameters_12_05_18PlateletContributionToROTEM.txt"), best_params)
+	writedlm(string("../parameterEstimation/Best", n, "PerObjectiveParameters_01_02_19PlateletContributionToROTEM.txt"), best_params)
 	return best_params
 end
 
@@ -769,7 +769,7 @@ function makeTrainingFigurePlatletContributionToROTEM()
 	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
 	counter = 1
 	numParamSets = 4
-	adjustICs = true
+	adjustICs = false
 	for j in collect(1:size(ids,1))
 		@show ids[j]
 		for k in collect(1:size(tPAs,1))

@@ -1,9 +1,12 @@
 include("runModel.jl")
 using Optim
+using Statistics
+using Random #so we can set the seed
 #to estimate initial conditions for a patient
 #let's load the things we're going to want globally
 
-POETs_data = "../parameterEstimation/POETS_info_05_12_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+#POETs_data = "../parameterEstimation/POETS_info_05_12_18_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
+POETs_data ="../parameterEstimation/POETS_info_02_01_19_PlateletContributionToROTEMFlatness1SmallerConversion.txt"
 
 ec,pc,ra=parsePOETsoutput(POETs_data)
 numParamSets = 2
@@ -71,48 +74,57 @@ function testROTEMPredicitionGivenParamsPlatetContributionToROTEM(allparams,pati
 		initial_condition_vector[16]=tPA #set tPA level
 		#initial_condition_vector=setCompleteModelIC(initial_condition_vector,patient_id)
 		reshaped_IC = vec(reshape(initial_condition_vector,22,1))
-		fbalances(t,y)= Balances(t,y,dict)
-		tic() 
-		t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
-		toc()	
+		fbalances(y,p,t)= Balances(t,y,dict) 
+		#fbalances(t,y)= Balances(t,y,dict) 
+		#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
+		prob = DifferentialEquations.ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+		@time sol = DifferentialEquations.solve(prob, saveat=.02,maxiters=1E6)
+		t =sol.t
+		X = sol
 		#@show size([a[2] for a in X])
 		A = convertToROTEMPlateletContribution(t,X,tPA,platelet_count)
 		@show size(A), size(TSIM)
-		while(size(A)!=size(TSIM))
-			tic() 
-			t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
-			toc()	
-			#@show size([a[2] for a in X])
+		count = 0
+		#deal with failure to solve, but give us a limit number of tries so we don't get stuck
+		while(size(A)!=size(TSIM) && count <10)
+			prob = DifferentialEquations.ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+			@time sol = DifferentialEquations.solve(prob, saveat=.02,maxiters=1E8)
+			t =sol.t
+			X = sol
 			A = convertToROTEMPlateletContribution(t,X,tPA,platelet_count)
+			count = count+1
+			if(count ==10)
+				A = fill(10^6, size(TSIM))
+			end
 		end
 
 		alldata=vcat(alldata,transpose(A))
 	end
 	alldata = alldata[2:end, :] #remove row of zeros
 	alldata = map(Float64,alldata)
-	meanROTEM = mean(alldata,1)
-	stdROTEM = std(alldata,1)
+	meanROTEM = mean(alldata,dims=1)
+	stdROTEM = std(alldata,dims=1)
 	return alldata, meanROTEM, stdROTEM, TSIM
 end
 
 function runOptimization(currID)
-	seed =89239
+	rseed =89239
 	numFevals =10
 	global patient_id = currID #change me as nesseccary
-	kin_params = mean(readdlm("../parameterEstimation/best8_02_05_18.txt"),1)
+	#kin_params = mean(readdlm("../parameterEstimation/best8_02_05_18.txt"),dims=1)
+	kin_params = mean(readdlm("../parameterEstimation/Best4PerObjectiveParameters_01_02_19PlateletContributionToROTEM.txt"), dims=1)
 	d = buildCompleteDictFromOneVector(kin_params)
 	nominal_ICs = d["INITIAL_CONDITION_VECTOR"]
 	lbs = nominal_ICs*.5
 	ubs = nominal_ICs*1.5
 	@show typeof(lbs)
 	@show typeof(ubs)
-	srand(seed)
+	Random.seed!(rseed)
 	#create problem and run optimization
-	tic()
+
 	#res = optimize(objectiveICs, lbs, ubs, ParticleSwarm(n_particles=40), Optim.Options(iterations=numFevals))
-	res = optimize(objectiveICs,nominal_ICs, lbs, ubs,NelderMead(), Optim.Options(iterations=numFevals))
-	toc()
+	@time res = optimize(objectiveICs,nominal_ICs, lbs, ubs,NelderMead(), Optim.Options(iterations=numFevals))
 	print(res)
-	writedlm(string("../parameterEstimation/ICEstimation/MinimumICsForPatient", patient_id, "usingParametersFrom_05_12_18UsingNM_W", numFevals,"Evals.txt"), res.minimizer)
-	writedlm(string("../parameterEstimation/ICEstimation/ResultICsForPatient", patient_id, "usingParametersFrom_05_12_18UsingNM_W", numFevals,"Evals.txt"),string(res))
+	writedlm(string("../parameterEstimation/ICEstimation/MinimumICsForPatient", patient_id, "usingParametersFrom_02_01_19UsingNM_W", numFevals,"Evals.txt"), res.minimizer)
+	writedlm(string("../parameterEstimation/ICEstimation/ResultICsForPatient", patient_id, "usingParametersFrom_02_01_19UsingNM_W", numFevals,"Evals.txt"),string(res))
 end
