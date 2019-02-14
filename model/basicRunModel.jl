@@ -16,7 +16,7 @@ function basicRunModel()
 	#allparams = readdlm("../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt", '\t')
 	#params = allparams[4,:]
 	#params = vec(readdlm("../parameterEstimation/startingPoint_02_05_18.txt"))
-	allparams = readdlm("../parameterEstimation/Best2PerObjectiveParameters_12_05_18PlateletContributionToROTEM.txt", '\t')
+	allparams = readdlm("../parameterEstimation/Best2PerObjectiveParameters_05_12_18PlateletContributionToROTEM.txt", '\t')
 	params = allparams[4,:]
 	close("all")
 	TSTART = 0.0

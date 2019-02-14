@@ -159,6 +159,7 @@ end
 		end
 	end	
 	writedlm(string("../parameterEstimation/Best", n, "PerObjectiveParameters_01_02_19PlateletContributionToROTEM.txt"), best_params)
+	#writedlm(string("../parameterEstimation/Best", n, "PerObjectiveParameters_05_12_18PlateletContributionToROTEM.txt"), best_params)
 	return best_params
 end
 
@@ -293,7 +294,8 @@ end
 
 function parsePOETsoutput(filename, number_of_objectives)
 	f = open(filename)
-	alltext = readstring(f)
+	#alltext = readstring(f)
+	alltext = read(f, String)
 	close(f)
 
 	outputname = "textparsing.txt"
@@ -302,17 +304,17 @@ function parsePOETsoutput(filename, number_of_objectives)
   	pc_array = zeros(number_of_parameters)
 	rank_array = zeros(1)	
 	counter =1
-	for grouping in matchall(r"\[([^]]+)\]", alltext)
-		cleanedgrouping = replace(grouping, "[", "")
-		nocommas = replace(cleanedgrouping, ","," ")
-		allcleaned = replace(nocommas, "]", "")
-		allcleaned = replace(allcleaned, ";", "\n")
+	for grouping in collect(m.match for m in eachmatch(r"\[([^]]+)\]", alltext))
+		cleanedgrouping = replace(grouping, "["=>"")
+		nocommas = replace(cleanedgrouping, ","=>" ")
+		allcleaned = replace(nocommas, "]"=>"")
+		allcleaned = replace(allcleaned, ";"=>"\n")
 		outfile = open(outputname, "w")
 		write(outfile, allcleaned)
 		close(outfile)
 		formatted = readdlm(outputname)
-		@show formatted	
-		@show size(formatted), counter
+		#@show formatted	
+		#@show size(formatted), counter
 		if(counter == 1)
 			ec_array = [ec_array formatted]
 			counter = counter +1
@@ -1779,13 +1781,13 @@ end
 end
 
  function checkForFlatness(t,A)
-	tstartcheck =10.0
-	tendcheck = 55.0
+	tstartcheck =5.0
+	tendcheck = 40.0
 	tstart=findfirst(x -> x == tstartcheck,t)
 	tend =findfirst(x -> x == tendcheck,t)
 	#go through in 5 minute intervals, and check for flatness
 	times = tstartcheck:5:tendcheck
-	threshold = 1.0
+	threshold = .1
 	flats = [] #if an interval is flat, gets true. Else, false
 	if (maximum(size(t))<=1 || t[end]<tendcheck) #if t is of size 1, we didn't solve properly, so this param set is bad
 		AnyFlats = true

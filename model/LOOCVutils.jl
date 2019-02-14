@@ -13,7 +13,8 @@ function checkForPreviousAndLoad(outputfilestr)
 		#allparams = readdlm(pathToParams, '\t')
 		#allparams = readdlm("../parameterEstimation/Best2PerObj_09_04_18.txt")
 		#allparams = readdlm("../parameterEstimation/Best8Overall_03_05_18.txt")
-		allparams = readdlm("../parameterEstimation/Best2PerObjectiveParameters_12_05_18PlateletContributionToROTEM.txt")
+		allparams = readdlm("../parameterEstimation/Best2PerObjectiveParameters_05_12_18PlateletContributionToROTEM.txt")
+		#allparams =readdlm("../parameterEstimation/Best2PerObjectiveParameters_01_02_19PlateletContributionToROTEM.txt")
 		initial_parameter_array = allparams[1,:]
 		round = 1
 		return initial_parameter_array,round
@@ -120,7 +121,8 @@ end
 
 function generateNbestPerObjectiveAndErrors(n,ec_array, pc_array,savestring)
 	num_objectives =size(ec_array,1)
-	best_params=Array{Array}(num_objectives*n)
+	best_params=fill(Float64[], num_objectives*n)
+	#best_params=Array{Array, (num_objectives*n)}
 	best_errors =zeros(num_objectives, n)
 	counter = 1
 	for j in collect(1:num_objectives)
@@ -128,7 +130,7 @@ function generateNbestPerObjectiveAndErrors(n,ec_array, pc_array,savestring)
 		allidx = collect(1:size(pc_array,2))
 		removed = allidx
 		for k in collect(1:n)
-			min_index = indmin(curr_error)
+			min_index = argmin(curr_error)
 			curr_best_params = pc_array[:,min_index]
 			best_params[counter] = curr_best_params
 			best_errors[j,k] = curr_error[min_index]
@@ -150,7 +152,7 @@ end
 function testLeftOutCase()
 	#After running LOOCV, use me to test the parameter found on the other 7 cases on the 8th left out case
 	numObjs = 7 #we had 7 different objectives
-	numPatients = 8
+	numPatients = 8 #four patients used for test/validation
 	numPerObj = 2 #let's pick the best 2 parameter sets per objective
 	numCases = 1
 	#change me to point to the correct files
@@ -305,4 +307,248 @@ function plotLeftOutCase()
 		savefig(string("../LOOCV/validation/TestingOnID", id, "10_31_18.pdf"))
 		
 	end
+end
+
+function testLeftOutCaseValidation()
+	#After running LOOCV, use me to test the parameter found on the other 7 cases on the 8th left out case
+	numObjs = 3 #we had 3 different objectives
+	numPatients = 4
+	numPerObj = 2 #let's pick the best 2 parameter sets per objective
+	numCases = 1
+	#change me to point to the correct files
+	#outputstr = "../LOOCV/POETS_info_04_10_18_PlateletContributionToROTEMFlatness1ToBeTestedOn" #both tPa = 2 and tPa =0
+	outputstr = "../LOOCV/POETS_info_12_02_19_PlateletContributionToROTEMFlatness1ToBeTestedOn" #only tPA 2
+	allids =collect(11:14)
+	countids = collect(1:4)
+	countids2 = collect(9:16)
+
+	#create storage. Fill with NaN to drop for means
+	allerrors_train = NaN*ones(numPatients*numCases, numPerObj*numPatients)
+	allerrors_validate = NaN*ones(numPatients*numCases, numPerObj*numObjs)
+	count = 1
+	for id in allids
+		println("Testing id=", id)
+		currstr = string(outputstr, id,"Round_1Max_iters2.txt")
+		#get results from LOOCV
+		ec,pc,ra = parsePOETsoutput(currstr, numObjs)
+		bestp, besterrs = generateNbestPerObjectiveAndErrors(numPerObj, ec, pc, "temp.txt")
+		#store the errors
+		upridx = count*numPerObj
+		lwridx = (count-1)*numPerObj+1
+		#adjust for 1 indexing
+		if(lwridx ==0)
+			lwridx =1
+		end
+		@show lwridx, upridx
+		@show size(besterrs)
+		leaveoutidx = count
+		#trainidxs = [countids[1:leaveoutidx-1] ;countids[ leaveoutidx+1:end];countids2[1:leaveoutidx-1] ;countids2[ leaveoutidx+1:end]]
+		trainidxs = [countids[1:leaveoutidx-1] ;countids[ leaveoutidx+1:end]]
+		@show trainidxs
+		@show size(allerrors_train[trainidxs,lwridx:upridx])
+		allerrors_train[trainidxs,lwridx:upridx]= besterrs 
+
+		#run the model with the best parameters
+		#let's also save the timecourse data to file so we can plot it later
+		@show size(bestp)
+		for j in 1:size(bestp,1)
+			println("On param set ", j, " out of ", size(bestp,1))
+			temp_params = bestp[j]
+			temp_params[47] = all_platelets[id] #set platelets to experimental value
+			dict = buildCompleteDictFromOneVector(temp_params)
+			initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
+			#to adjust per patient. Comment out if we don't want to do that
+			#initial_condition_vector=setCompleteModelIC(initial_condition_vector,id)
+			#let's only consider tPA = 2 case for now
+			tPA = 2.0
+			initial_condition_vector[16]=tPA
+			TSTART = 0.0
+			Ts = .02
+			TSTOP = 90.0
+			#solve
+			TSIM = collect(TSTART:Ts:TSTOP)
+			fbalances(y,p,t)= Balances(t,y,dict) 
+			prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+			@time sol = solve(prob)
+			t =sol.t
+			X = sol
+			FIIa = X[2,:]
+			fibrinogen = X[14,:]
+			A = convertToROTEMPlateletContribution(t,X,tPA,all_platelets[id])
+			MSE, interpData = calculateMSE(t,A, allexperimentaldata[id])
+			allerrors_validate[count,j]=MSE
+			#store time series to disk so we can average and plot it
+			writedlm(string("../LOOCV/validation/ValidatesimulatedROTEMPatient", id,"paramset", j, "tPA=2.txt"),hcat(t,A))
+
+
+			#let's run the tPA = 0 case, too
+			tPA = 0.0
+			initial_condition_vector[16]=tPA
+			TSTART = 0.0
+			Ts = .02
+			TSTOP = 120.0
+			#solve
+			TSIM = collect(TSTART:Ts:TSTOP)
+			fbalances(y,p,t)= Balances(t,y,dict) 
+			#fbalances(t,y)= Balances(t,y,dict) 
+			#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
+			prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+			@time sol = solve(prob)
+			t =sol.t
+			X = sol
+			A = convertToROTEMPlateletContribution(t,X,tPA,all_platelets[id])
+			#store time series to disk so we can average and plot it
+			writedlm(string("../LOOCV/validation/ValidatesimulatedROTEMPatient", id,"paramset", j, "tPA=0.txt"),hcat(t,A))
+		end
+		count = count+1	
+	end
+	return allerrors_validate, allerrors_train
+	#note to self: to get means out, since you have NaN, use the images package (using Images)
+	#then meanfinite(allerrors_test,2)
+	#meanfinite(allerrors_train,2)
+	
+end
+
+function testLeftOutCaseValidation(batch_number::Int64)
+	#After running LOOCV, use me to test the parameter found on the other 7 cases on the 8th left out case
+	numObjs = 3 #we had 3 different objectives
+	numPatients = 4
+	numPerObj = 2 #let's pick the best 2 parameter sets per objective
+	numCases = 1
+	#change me to point to the correct files
+	#outputstr = "../LOOCV/POETS_info_04_10_18_PlateletContributionToROTEMFlatness1ToBeTestedOn" #both tPa = 2 and tPa =0
+	outputstr = "../LOOCV/POETS_info_12_02_19_PlateletContributionToROTEMFlatness1ToBeTestedOn" #only tPA 2
+	allids =collect(11:14)
+	countids = collect(1:4)
+	countids2 = collect(9:16)
+
+	#create storage. Fill with NaN to drop for means
+	allerrors_train = NaN*ones(numPatients*numCases, numPerObj*numPatients)
+	allerrors_validate =  NaN*ones(numPatients*numCases, numPerObj*numObjs)
+	count = 1
+	for id in allids
+		println("Testing id=", id)
+		currstr = string(outputstr, id,"Round_1Max_iters2.txtRound_", batch_number, "outOf2.txt")
+		#get results from LOOCV
+		ec,pc,ra = parsePOETsoutput(currstr, numObjs)
+		bestp, besterrs = generateNbestPerObjectiveAndErrors(numPerObj, ec, pc, "temp.txt")
+		#store the errors
+		upridx = count*numPerObj
+		lwridx = (count-1)*numPerObj+1
+		#adjust for 1 indexing
+		if(lwridx ==0)
+			lwridx =1
+		end
+		#@show lwridx, upridx
+		#@show size(besterrs)
+		leaveoutidx = count
+		#trainidxs = [countids[1:leaveoutidx-1] ;countids[ leaveoutidx+1:end];countids2[1:leaveoutidx-1] ;countids2[ leaveoutidx+1:end]]
+		trainidxs = [countids[1:leaveoutidx-1] ;countids[ leaveoutidx+1:end]]
+		#@show trainidxs
+		#@show size(allerrors_train[trainidxs,lwridx:upridx])
+		allerrors_train[trainidxs,lwridx:upridx]= besterrs 
+
+		#run the model with the best parameters
+		#let's also save the timecourse data to file so we can plot it later
+		#@show size(bestp)
+		for j in 1:size(bestp,1)
+			println("On param set ", j, " out of ", size(bestp,1))
+			temp_params = bestp[j]
+			temp_params[47] = all_platelets[id] #set platelets to experimental value
+			dict = buildCompleteDictFromOneVector(temp_params)
+			initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
+			#to adjust per patient. Comment out if we don't want to do that
+			#initial_condition_vector=setCompleteModelIC(initial_condition_vector,id)
+			#let's only consider tPA = 2 case for now
+			tPA = 2.0
+			initial_condition_vector[16]=tPA
+			TSTART = 0.0
+			Ts = .02
+			TSTOP = 90.0
+			#solve
+			TSIM = collect(TSTART:Ts:TSTOP)
+			fbalances(y,p,t)= Balances(t,y,dict) 
+			prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+			sol = solve(prob)
+			t =sol.t
+			X = sol
+			FIIa = X[2,:]
+			fibrinogen = X[14,:]
+			A = convertToROTEMPlateletContribution(t,X,tPA,all_platelets[id])
+			MSE, interpData = calculateMSE(t,A, allexperimentaldata[id])
+			allerrors_validate[count,j]=MSE
+			#store time series to disk so we can average and plot it
+			writedlm(string("../LOOCV/validation/ValidatesimulatedROTEMPatient", id,"paramset", j, "tPA=2.txt"),hcat(t,A))
+
+
+			#let's run the tPA = 0 case, too
+			tPA = 0.0
+			initial_condition_vector[16]=tPA
+			TSTART = 0.0
+			Ts = .02
+			TSTOP = 120.0
+			#solve
+			TSIM = collect(TSTART:Ts:TSTOP)
+			fbalances(y,p,t)= Balances(t,y,dict) 
+			#fbalances(t,y)= Balances(t,y,dict) 
+			#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
+			prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+			sol = solve(prob)
+			t =sol.t
+			X = sol
+			A = convertToROTEMPlateletContribution(t,X,tPA,all_platelets[id])
+			#store time series to disk so we can average and plot it
+			writedlm(string("../LOOCV/validation/ValidatesimulatedROTEMPatient", id,"paramset", j, "tPA=0.txt"),hcat(t,A))
+		end
+		count = count+1	
+	end
+	return allerrors_validate, allerrors_train
+	#note to self: to get means out, since you have NaN, use the images package (using Images)
+	#then meanfinite(allerrors_test,2)
+	#meanfinite(allerrors_train,2)
+	
+end
+
+function testAllBatches()
+	numBatches =5
+	mean_val_err = []
+	mean_train_err = []
+	for j =1:numBatches
+		println(string("On batch", j))
+		allerrors_validate, allerrors_train= testLeftOutCaseValidation(j)
+		@show allerrors_validate
+		@show allerrors_train
+		push!(mean_val_err, mean(allerrors_validate))
+		push!(mean_train_err, mean(meanfinite(allerrors_train,2)))
+		@show mean_train_err
+		@show mean_val_err
+	end
+	writedlm("../LOOCV/compareTest_Validation/Train_12_02_18.txt", mean_train_err)
+	writedlm("../LOOCV/compareTest_Validation/Val_12_02_18.txt", mean_val_err)
+	figure(figsize = [10,10])
+	batches = 1:numBatches
+	plot(batches, mean_val_err, "kx")
+	plot(batches, mean_train_err, "k*")
+	ax = gca()
+	ax[:tick_params]("both",labelsize=24) 
+	legend(["Validation Error", "Training Error"])
+	xlabel("Average Error", fontsize=36)
+	ylabel("Number of POETs Iterations",fontsize=36)
+	savefig("../figures/ConvergenceCurves_1.pdf")
+end
+
+function plotTrainValErr()
+	mean_train_err=readdlm("../LOOCV/compareTest_Validation/Train_12_02_18.txt")
+	mean_train_err=readdlm("../LOOCV/compareTest_Validation/Val_12_02_18.txt")
+	numBatches=size(mean_train_err)
+	figure(figsize = [10,10])
+	batches = 1:numBatches
+	plot(batches, mean_val_err, "kx")
+	plot(batches, mean_train_err, "k*")
+	ax = gca()
+	ax[:tick_params]("both",labelsize=24) 
+	legend(["Validation Error", "Training Error"])
+	xlabel("Average Error", fontsize=36)
+	ylabel("Number of POETs Iterations",fontsize=36)
+	savefig("../figures/ConvergenceCurves_1.pdf")
 end
