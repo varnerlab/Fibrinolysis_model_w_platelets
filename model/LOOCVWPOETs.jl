@@ -509,7 +509,7 @@ end
 #attemptOptimizationPOETSBothCasesPlateletContributionRestartable(outputfilename, selids)
 
 training_ids = collect(11:14)
-leaveoutidx=1
+leaveoutidx=2
 leaveoutid=training_ids[leaveoutidx]
 selids=[training_ids[1:leaveoutidx-1];training_ids[leaveoutidx+1:end] ]
 outputfilename = string("../LOOCV/POETS_info_14_02_19_PlateletContributionToROTEMFlatness1ToBeTestedOn",strip(string(leaveoutid)))

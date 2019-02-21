@@ -513,6 +513,8 @@ function testAllBatches()
 	numBatches =5
 	mean_val_err = []
 	mean_train_err = []
+	std_val_err =[]
+	std_train_err = []
 	for j =1:numBatches
 		println(string("On batch", j))
 		allerrors_validate, allerrors_train= testLeftOutCaseValidation(j)
@@ -520,6 +522,8 @@ function testAllBatches()
 		@show allerrors_train
 		push!(mean_val_err, mean(allerrors_validate))
 		push!(mean_train_err, mean(meanfinite(allerrors_train,2)))
+		push!(std_val_err, std(allerrors_validate))
+		push!(std_train_err, std(meanfinite(allerrors_train,2)))
 		@show mean_train_err
 		@show mean_val_err
 	end
@@ -527,13 +531,15 @@ function testAllBatches()
 	writedlm("../LOOCV/compareTest_Validation/Val_12_02_18.txt", mean_val_err)
 	figure(figsize = [10,10])
 	batches = 1:numBatches
-	plot(batches, mean_val_err, "kx")
-	plot(batches, mean_train_err, "k*")
+	@show std_val_err
+	@show std_train_err
+	errorbar(batches, mean_val_err,yerr=std_val_err)
+	errorbar(batches, mean_train_err, yerr=std_train_err)
 	ax = gca()
 	ax[:tick_params]("both",labelsize=24) 
 	legend(["Validation Error", "Training Error"])
-	xlabel("Average Error", fontsize=36)
-	ylabel("Number of POETs Iterations",fontsize=36)
+	ylabel("Average Error", fontsize=36)
+	xlabel("Number of POETs Iterations",fontsize=36)
 	savefig("../figures/ConvergenceCurves_1.pdf")
 end
 
@@ -548,7 +554,7 @@ function plotTrainValErr()
 	ax = gca()
 	ax[:tick_params]("both",labelsize=24) 
 	legend(["Validation Error", "Training Error"])
-	xlabel("Average Error", fontsize=36)
-	ylabel("Number of POETs Iterations",fontsize=36)
+	ylabel("Average Error", fontsize=36)
+	xlabel("Number of POETs Iterations",fontsize=36)
 	savefig("../figures/ConvergenceCurves_1.pdf")
 end
