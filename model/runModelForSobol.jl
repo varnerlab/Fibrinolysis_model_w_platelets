@@ -1,4 +1,16 @@
-include("runModel.jl")
+using Distributed
+@everywhere include("runModel.jl")
+@everywhere include("Balances.jl")
+@everywhere include("Kinetics.jl")
+@everywhere include("Control.jl")
+@everywhere include("CoagulationModelFactory.jl")
+@everywhere include("utilities.jl")
+@everywhere include("LOOCVutils.jl")
+
+using DifferentialEquations
+using SharedArrays
+using DelimitedFiles
+using Statistics
 
 function runModelForSobol()
 	allparams = readdlm("sensitivity/paramsplusorminus50percentN5000.txt", ' ', Float64);
@@ -6,7 +18,7 @@ function runModelForSobol()
 	numSets = size(allparams,1)
 	f = open("sensitivity/AUCForSobolPM50PercentN1000.txt", "a+")
 	for j in collect(1:numSets)
-		@printf("On set %d of %d\n", j, numSets)
+		#@printf("On set %d of %d\n", j, numSets)
 		currparams = allparams[j,:]
 		AUC =runModelWithParamsReturnAUC(currparams)
 		write(f, string(AUC, "\n"))
@@ -21,12 +33,12 @@ function runModelForSobolParallel()
 	@show size(allparams)
 	numSets = size(allparams,1)
 	paramsPerThread = numSets/nworkers()
-	@sync @parallel for j in collect(1:nworkers())
+	@sync @distributed for j in collect(1:nworkers())
 		touch(string("../sensitivity/AUCForSobolPM50PercentN500OnlyParams_", myid()-1, "_of_",nworkers(), ".txt"))
 		f = open(string("../sensitivity/AUCForSobolPM50PercentN500OnlyParams_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
 		 for k in collect(1:paramsPerThread)
 			offset = (myid()-2)*paramsPerThread
-			@printf("On set %d of %d on threads %d \n", offset+k, numSets, myid())
+			#@printf("On set %d of %d on threads %d \n", offset+k, numSets, myid())
 			if(offset+k<=numSets)
 				currparams = allparams[Int((offset)+k),:]
 				AUC =runModelWithParamsReturnAUC(currparams,2)
@@ -45,12 +57,12 @@ function runModelForSobolParallel_IncludingInitialConditions()
 	@show size(allparams)
 	numSets = size(allparams,1)
 	paramsPerThread = numSets/nworkers()
-	@sync @parallel for j in collect(1:nworkers())
+	@sync @distributed for j in collect(1:nworkers())
 		touch(string("../sensitivity/05_31_17_AUCForSobolPM50PercentN5000_", myid()-1, "_of_",nworkers(), ".txt"))
 		f = open(string("../sensitivity/05_31_17_AUCForSobolPM50PercentN5000_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
 		 for k in collect(1:paramsPerThread)
 			offset = (myid()-2)*paramsPerThread
-			@printf("On set %d of %d on threads %d \n", offset+k, numSets, myid())
+			#@printf("On set %d of %d on threads %d \n", offset+k, numSets, myid())
 			if(offset+k<=numSets)
 				currparams = allparams[Int((offset)+k),:]
 				AUC =runModelWithParamsSetICReturnAUC(currparams)
@@ -74,7 +86,7 @@ function runModelForSobolParallel_FibrinOnly()
 	@show size(allparams)
 	numSets = size(allparams,1)
 	paramsPerThread = numSets/nworkers()
-	@sync @parallel for j in collect(1:nworkers())
+	@sync @distributed for j in collect(1:nworkers())
 	#for j in collect(1:nworkers())
 		touch(string("../sensitivity/06_12_17_AUCForSobolPM50PercentN1000_", myid()-1, "_of_",nworkers(), ".txt"))
 		f = open(string("../sensitivity/06_12_17_AUCForSobolPM50PercentN1000_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
@@ -84,7 +96,7 @@ function runModelForSobolParallel_FibrinOnly()
 			else
 				offset = (myid()-2)*paramsPerThread
 			end
-			@printf("On set %d of %d on threads %d \n", offset+k, numSets, myid())
+			#@printf("On set %d of %d on threads %d \n", offset+k, numSets, myid())
 			if(offset+k<=numSets)
 				currparams = allparams[Int((offset)+k),:]
 				#need to set the non fibrin related params
@@ -112,12 +124,12 @@ function runModelForSobolParallel_OnlyInitialConditions()
 	@show size(allIC)
 	numSets = size(allIC,1)
 	paramsPerThread = numSets/nworkers()
-	@sync @parallel for j in collect(1:nworkers())
+	@sync  @distributed for j in collect(1:nworkers())
 		touch(string("sensitivity/05_30_17_AUCForSobolPM50PercentOnlyICN2000_", myid()-1, "_of_",nworkers(), ".txt"))
 		f = open(string("sensitivity/05_30_17_AUCForSobolPM50PercentOnlyICN2000_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
 		 for k in collect(1:paramsPerThread)
 			offset = (myid()-2)*paramsPerThread
-			@printf("On set %d of %d on threads %d \n", offset+k, numSets, myid())
+			#@printf("On set %d of %d on threads %d \n", offset+k, numSets, myid())
 			if(offset+k<=numSets)
 				currIC = allIC[Int((offset)+k),:]
 				AUC =runModelWithParamsChangeICReturnAUC(params,currIC)
@@ -144,7 +156,7 @@ function runModelForSobolParallel_OnlyInitialConditions_calculateCurveStats()
 	numSets = size(allIC,1)
 	paramsPerThread = numSets/nworkers()
 	@show paramsPerThread
-	@sync @parallel for j in collect(1:nworkers())
+	@sync  @distributed for j in collect(1:nworkers())
 	#for j in collect(1:nworkers())
 		touch(string("../sensitivity/05_10_18_MetricsForSobolPM50PercentOnlyICN1000_", myid()-1, "_of_",nworkers(), ".txt"))
 		f = open(string("../sensitivity/05_10_18_MetricsForSobolPM50PercentOnlyICN1000_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
@@ -154,7 +166,7 @@ function runModelForSobolParallel_OnlyInitialConditions_calculateCurveStats()
 			else
 				offset = 0
 			end
-			@printf("On set %d of %d on threads %d \n", offset+k, numSets, myid())
+			println(string("On set", offset+k, " of", numSets, "  on threads",  myid()))
 			if(offset+k<=numSets)
 				currIC = allIC[Int((offset)+k),:]
 				A,t =runModelWithParamsChangeICReturnA(params,currIC)
@@ -170,11 +182,12 @@ end
 function runModelForSobolParallel_OnlyParams_calculateCurveStats()
 	#allIC = readdlm("../sensitivity/sobol_samplesOnlyIC_n2000_pm50_30_05_17.txt", ' ', Float64);
 	#allParams = readdlm("../sensitivity/sobol_samplesOnlyParams_n1000_pm50_02_05_18.txt", ' ', Float64);
-	allParams =readdlm("../sensitivity/sobolparams_N_500_01_10_18.txt")
+	#allParams =readdlm("../sensitivity/sobolparams_N_500_01_10_18.txt")
+	allParams =readdlm("../sensitivity/sobolSamplesN500_OnlyParams_3_08_19.txt")
 	#startingpt =  readdlm("../parameterEstimation/Best2PerObjectiveParameters_25_05_2017OriginalShapeFunctionOnlyFittingtPA2.txt")
-	startingpt = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
-	meanparams = startingpt#mean(startingpt,1)
-	params = meanparams
+#	startingpt = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
+#	meanparams = startingpt#mean(startingpt,1)
+#	params = meanparams
 	#allparams = SharedArray(Float64, size(allparamslocal))
 	#allparams =allparamslocal
 	tPA = 2.0 #run this at tPA = 2 case
@@ -182,20 +195,20 @@ function runModelForSobolParallel_OnlyParams_calculateCurveStats()
 	numSets = size(allParams,1)
 	paramsPerThread = numSets/nworkers()
 	@show paramsPerThread
-	@sync @parallel for j in collect(1:nworkers())
+	@sync  @distributed for j in collect(1:nworkers())
 	#for j in collect(1:nworkers())
-		touch(string("../sensitivity/01_10_18_MetricsForSobolPM50PercentOnlyParamsN500_", myid()-1, "_of_",nworkers(), ".txt"))
-		f = open(string("../sensitivity/01_10_18_MetricsForSobolPM50PercentOnlyParamsN500_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
+		touch(string("../sensitivity/3_08_19_MetricsForSobolPM50PercentOnlyParamsN500_", myid()-1, "_of_",nworkers(), ".txt"))
+		f = open(string("../sensitivity/3_08_19_MetricsForSobolPM50PercentOnlyParamsN500_", myid()-1, "_of_",nworkers(), ".txt"), "a+")
 		 for k in collect(1:paramsPerThread)
 			if(nworkers() != 1)
 				offset = (myid()-2)*paramsPerThread
 			else
 				offset = 0
 			end
-			@printf("On set %d of %d on threads %d \n", offset+k, numSets, myid())
+			#println(string("On set", offset+k, " of", numSets, "  on threads",  myid()))
 			if(offset+k<=numSets)
 				currparams = allParams[Int((offset)+k),:]
-				
+				println(string("On set", offset+k, " of", numSets, "  on threads",  myid()))
 				t,A =runModelWithParamsReturnA(currparams,tPA)
 				#checking for negativitiy
 				#minA = minimum(A)

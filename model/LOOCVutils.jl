@@ -417,7 +417,7 @@ function testLeftOutCaseValidation(batch_number::Int64)
 	numCases = 1
 	#change me to point to the correct files
 	#outputstr = "../LOOCV/POETS_info_04_10_18_PlateletContributionToROTEMFlatness1ToBeTestedOn" #both tPa = 2 and tPa =0
-	outputstr = "../LOOCV/POETS_info_12_02_19_PlateletContributionToROTEMFlatness1ToBeTestedOn" #only tPA 2
+	outputstr = "../LOOCV/POETS_info_14_02_19_PlateletContributionToROTEMFlatness1ToBeTestedOn" #only tPA 2
 	allids =collect(11:14)
 	countids = collect(1:4)
 	countids2 = collect(9:16)
@@ -428,7 +428,7 @@ function testLeftOutCaseValidation(batch_number::Int64)
 	count = 1
 	for id in allids
 		println("Testing id=", id)
-		currstr = string(outputstr, id,"Round_1Max_iters2.txtRound_", batch_number, "outOf2.txt")
+		currstr = string(outputstr, id,"Round_1Max_iters10.txtRound_", batch_number, "outOf10.txt")
 		#get results from LOOCV
 		ec,pc,ra = parsePOETsoutput(currstr, numObjs)
 		bestp, besterrs = generateNbestPerObjectiveAndErrors(numPerObj, ec, pc, "temp.txt")
@@ -510,7 +510,8 @@ function testLeftOutCaseValidation(batch_number::Int64)
 end
 
 function testAllBatches()
-	numBatches =5
+	close("all")
+	numBatches =10
 	mean_val_err = []
 	mean_train_err = []
 	std_val_err =[]
@@ -527,8 +528,10 @@ function testAllBatches()
 		@show mean_train_err
 		@show mean_val_err
 	end
-	writedlm("../LOOCV/compareTest_Validation/Train_12_02_18.txt", mean_train_err)
-	writedlm("../LOOCV/compareTest_Validation/Val_12_02_18.txt", mean_val_err)
+	writedlm("../LOOCV/compareTest_Validation/Train_mean_14_02_18.txt", mean_train_err)
+	writedlm("../LOOCV/compareTest_Validation/Val_mean_14_02_18.txt", mean_val_err)
+	writedlm("../LOOCV/compareTest_Validation/Train_std_14_02_18.txt", std_train_err)
+	writedlm("../LOOCV/compareTest_Validation/Val_std_14_02_18.txt", std_val_err)
 	figure(figsize = [10,10])
 	batches = 1:numBatches
 	@show std_val_err
@@ -540,21 +543,187 @@ function testAllBatches()
 	legend(["Validation Error", "Training Error"])
 	ylabel("Average Error", fontsize=36)
 	xlabel("Number of POETs Iterations",fontsize=36)
-	savefig("../figures/ConvergenceCurves_1.pdf")
+	savefig("../figures/ConvergenceCurves_Feb14.pdf")
+end
+
+function testAllBatchesAndMakeFigures()
+	close("all")
+	numBatches =10
+	numObjs = 3 #we had 3 different objectives
+	numPatients = 4
+	numPerObj = 2 #let's pick the best 2 parameter sets per objective
+	numCases = 1
+	allids =collect(11:14)
+	outputstr = "../LOOCV/POETS_info_14_02_19_PlateletContributionToROTEMFlatness1ToBeTestedOn" #only tPA 2
+	numParams = 77
+	for j =1:numBatches
+		println(string("On batch ", j))
+		currparams = zeros(numPerObj*numObjs*size(allids,1), numParams)
+		count = 1
+		offset = numPerObj*numObjs
+		for id in allids				
+			currstr = string(outputstr, id,"Round_1Max_iters10.txtRound_", batch_number, "outOf10.txt")
+			#get results from LOOCV
+			ec,pc,ra = parsePOETsoutput(currstr, numObjs)
+			bestp, besterrs = generateNbestPerObjectiveAndErrors(numPerObj, ec, pc, "temp.txt")
+			currparams[(count-1)*offset+1:count*offset,:]=transpose(reshape(collect(Iterators.flatten(bestp)),numParams,offset))
+			count = count+1
+		end
+		makePredictionFigurePlatletContributionToROTEM(currparams, string("../figures/LOOCV_14_02_19_Predicitions_after_batch", j, "final.pdf"),string("../figures/LOOCV_14_02_19_Predicitions_after_batch", j, "subfig.pdf"))
+		makeTrainingFigurePlatletContributionToROTEM(currparams, string("../figures/LOOCV_14_02_19_Training_after_batch", j, "final.pdf"),string("../figures/LOOCV_14_02_19_Training_after_batch", j, "subfig.pdf"))
+	end
+end
+
+function makeTrainingFigurePlatletContributionToROTEM(best_params, savestr_final,savestr)
+	font2 = Dict("family"=>"sans-serif",
+	    "color"=>"black",
+	    "weight"=>"normal",
+	    "size"=>20)
+	close("all")
+
+	ids = [5,6,7,8]
+	tPAs = [0,2]
+	close("all")
+	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
+	counter = 1
+	numParamSets = size(best_params,1)
+	adjustICs = false
+	for j in collect(1:size(ids,1))
+		@show ids[j]
+		for k in collect(1:size(tPAs,1))
+			#bestparams=generateBestNparameters(8,ec,pc)
+			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(best_params, ids[j], tPAs[k], savestr,adjustICs)
+			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
+			@show norm(meanROTEM), norm(expdata[:,2])
+			@show counter
+			curraxis=axarr[j,k]
+			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
+			curraxis[:plot](TSIM, vec(meanROTEM), "k")
+			upper = vec(meanROTEM+stdROTEM)
+			lower = vec(meanROTEM-stdROTEM)
+			curraxis[:fill_between]((TSIM), vec(upper), vec(lower), color = ".5", alpha =.5)
+			curraxis[:plot](expdata[:,1], expdata[:,2], ".k")
+			if(mod(counter,2)==1)
+				curraxis[:set_ylim](0, 70)
+				curraxis[:set_xlim](0,TSIM[end])
+				curraxis[:set_ylabel](string("Patient ", ids[j]), fontdict=font2)
+			else
+				axis([0, TSIM[end], 0, 90])
+			end
+
+			if(counter==7 || counter ==8)
+				#xlabel("Time, in minutes", fontdict = font2)
+			else
+				ax =gca()
+				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
+			end
+			counter=counter+1
+		end
+	end
+	#label columns
+	figure(1)
+	annotate("tPA = 0 nanomolar",
+               xy=[.12;.95],
+               xycoords="figure fraction",
+               xytext=[.39,0.95],
+               textcoords="figure fraction",
+               ha="right",
+               va="top", fontsize = 24, family = "sans-serif")
+	annotate("tPA = 2 nanomolar",
+               xy=[.12;.95],
+               xycoords="figure fraction",
+               xytext=[.85,0.95],
+               textcoords="figure fraction",
+               ha="right",
+               va="top", fontsize = 24, family = "sans-serif")
+
+	fig[:text](0.5, 0.04, "Time (minutes)", ha="center", va="center", fontsize=40)
+	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
+
+	savefig(savestr_final)
+end
+
+function makePredictionFigurePlatletContributionToROTEM(best_params, savestr_final,savestr)
+	#use me
+	font2 = Dict("family"=>"sans-serif",
+	    "color"=>"black",
+	    "weight"=>"normal",
+	    "size"=>20)
+	close("all")
+	ids = [3,4,9,10]
+	tPAs = [0,2]
+	close("all")
+	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
+	counter = 1
+	numParamSets = size(best_params,1)
+	adjustICs=false
+	for j in collect(1:size(ids,1))
+		for k in collect(1:size(tPAs,1))
+			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(best_params, ids[j], tPAs[k], savestr,adjustICs)
+			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
+			@show counter
+			@show norm(meanROTEM), norm(expdata[:,2])
+			curraxis=axarr[j,k]
+			#plotAverageROTEMWDataSubplot(curraxis,TSIM,meanROTEM,stdROTEM,expdata)
+			curraxis[:plot](TSIM, vec(meanROTEM), "k")
+			upper = vec(meanROTEM+stdROTEM)
+			lower = vec(meanROTEM-stdROTEM)
+			curraxis[:fill_between]((TSIM), vec(upper), vec(lower), color = ".5", alpha =.5)
+			curraxis[:plot](expdata[:,1], expdata[:,2], ".k")
+			if(mod(counter,2)==1)
+				curraxis[:set_ylim](0, 70)
+				curraxis[:set_xlim](0,TSIM[end])
+				curraxis[:set_ylabel](string("Patient ", ids[j]), fontdict=font2)
+			else
+				axis([0, TSIM[end], 0, 90])
+			end
+
+			if(counter==7 || counter ==8)
+				figure(1)
+				#xlabel("Time, in minutes", fontdict = font2)
+			else
+				ax =gca()
+				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
+			end
+			counter=counter+1
+		end
+	end
+	#label columns
+	figure(1)
+	annotate("tPA = 0 nanomolar",
+               xy=[.12;.95],
+               xycoords="figure fraction",
+               xytext=[.39,0.95],
+               textcoords="figure fraction",
+               ha="right",
+               va="top", fontsize = 24, family = "sans-serif")
+	annotate("tPA = 2 nanomolar",
+               xy=[.12;.95],
+               xycoords="figure fraction",
+               xytext=[.85,0.95],
+               textcoords="figure fraction",
+               ha="right",
+               va="top", fontsize = 24, family = "sans-serif")
+
+	fig[:text](0.5, 0.04, "Time (minutes)", ha="center", va="center", fontsize=40)
+	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
+
+	savefig(savestr_final)
 end
 
 function plotTrainValErr()
-	mean_train_err=readdlm("../LOOCV/compareTest_Validation/Train_12_02_18.txt")
-	mean_train_err=readdlm("../LOOCV/compareTest_Validation/Val_12_02_18.txt")
-	numBatches=size(mean_train_err)
+	close("all")
+	mean_train_err=readdlm("../LOOCV/compareTest_Validation/Train_14_02_18.txt")
+	mean_val_err=readdlm("../LOOCV/compareTest_Validation/Val_14_02_18.txt")
+	numBatches=size(mean_train_err,1)
 	figure(figsize = [10,10])
 	batches = 1:numBatches
-	plot(batches, mean_val_err, "kx")
-	plot(batches, mean_train_err, "k*")
+	plot(batches, mean_val_err, "kx", markersize=13)
+	plot(batches, mean_train_err, "ko", markersize=13)
 	ax = gca()
 	ax[:tick_params]("both",labelsize=24) 
-	legend(["Validation Error", "Training Error"])
+	legend(["Validation Error", "Training Error"], fontsize=30)
 	ylabel("Average Error", fontsize=36)
 	xlabel("Number of POETs Iterations",fontsize=36)
-	savefig("../figures/ConvergenceCurves_1.pdf")
+	savefig("../figures/ConvergenceCurves_Feb14_nobars.pdf")
 end
