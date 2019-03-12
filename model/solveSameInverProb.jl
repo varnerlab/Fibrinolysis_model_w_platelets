@@ -226,11 +226,12 @@ end
 	println("got $minf at $minx after $count iterations (returned $ret)")
 
 	println("Staring Local Optimization")
-	optlocal = opt = Opt(:LN_NELDERMEAD, size(all_nominal,1))
+	optlocal = Opt(:LN_NELDERMEAD, size(all_nominal,1))
 	#set bounds
 	lower_bounds!(optlocal, vec(minx*.5))
 	upper_bounds!(optlocal, vec(minx*1.5))
 	min_objective!(optlocal, objective_six_metrics_weighted)
+	maxeval!(optlocal, 100)
 	
 	@time (minf_local,minx_local,ret_local) = optimize(opt, vec(minx))
 	
