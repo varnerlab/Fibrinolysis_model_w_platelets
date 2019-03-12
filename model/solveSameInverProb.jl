@@ -3,8 +3,9 @@ using DelimitedFiles
 using Statistics
 using Random
 
-include("runModel.jl")
-include("solveInverseProbGenerateProb.jl")
+
+@everywhere include("runModel.jl")
+@everywhere include("solveInverseProbGenerateProb.jl")
 
 function generateMasterCurve(seed)
 	close("all")
@@ -97,7 +98,7 @@ function generateMasterCurve(seed)
 	writedlm(string("../solveInverseProb/Master_Metrics_to_match_11_03_19_later", ".txt"), stats)
 end
 
-function runNLoptSameProb(seed,iter)
+@everywhere function runNLoptSameProb(seed,iter)
 	# Load data -
 	allp = readdlm("../LOOCV/bestparamsForBatch_10_14_02_19.txt")
 	#global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
@@ -237,6 +238,6 @@ function runNLoptSameProb(seed,iter)
 	writedlm(string("../solveInverseProb/foundIcs_11_03_19_", iter, "solvingSameProb.txt"), minx_local)
 end
 
-for k =1:50
+@sync @distributed for k in 1:50
 	runNLoptSameProb(k+54354,k)
 end
