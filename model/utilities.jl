@@ -608,7 +608,7 @@ end
 	end
 	A1 = fill(S, size(F))
 	if(occursin("DiffEq", string(typeof(x))))
-		print("here!")
+		#print("here!")
 		P=platelet_count/normal_platelet_count.*vec(x[8,:]).*vec(x[12,:])
 	else
 		P=platelet_count/normal_platelet_count.*[a[8] for a in x].*[a[12] for a in x]
@@ -1608,7 +1608,7 @@ end
 	MCF = calculateMCF(ROTEM_curve,TSIM)
 	later_firmess = calculateFirmnessAtTime(ROTEM_curve,TSIM,tdesired)
 	#@show MCF, later_firmess
-	LI = (later_firmess)/MCF #since this is expressed as a percent
+	LI = 1-(later_firmess)/MCF #since this is expressed as a percent
 	if(LI <0)
 		LI = 0.0
 	end

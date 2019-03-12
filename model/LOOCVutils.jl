@@ -556,11 +556,13 @@ function testAllBatchesAndMakeFigures()
 	allids =collect(11:14)
 	outputstr = "../LOOCV/POETS_info_14_02_19_PlateletContributionToROTEMFlatness1ToBeTestedOn" #only tPA 2
 	numParams = 77
-	for j =1:numBatches
+	#for j =1:numBatches
+	for j =10:numBatches
 		println(string("On batch ", j))
 		currparams = zeros(numPerObj*numObjs*size(allids,1), numParams)
 		count = 1
 		offset = numPerObj*numObjs
+		batch_number=j
 		for id in allids				
 			currstr = string(outputstr, id,"Round_1Max_iters10.txtRound_", batch_number, "outOf10.txt")
 			#get results from LOOCV
@@ -569,6 +571,7 @@ function testAllBatchesAndMakeFigures()
 			currparams[(count-1)*offset+1:count*offset,:]=transpose(reshape(collect(Iterators.flatten(bestp)),numParams,offset))
 			count = count+1
 		end
+		writedlm(string("../LOOCV/bestparamsForBatch_", batch_number, "_14_02_19.txt"),currparams)
 		makePredictionFigurePlatletContributionToROTEM(currparams, string("../figures/LOOCV_14_02_19_Predicitions_after_batch", j, "final.pdf"),string("../figures/LOOCV_14_02_19_Predicitions_after_batch", j, "subfig.pdf"))
 		makeTrainingFigurePlatletContributionToROTEM(currparams, string("../figures/LOOCV_14_02_19_Training_after_batch", j, "final.pdf"),string("../figures/LOOCV_14_02_19_Training_after_batch", j, "subfig.pdf"))
 	end

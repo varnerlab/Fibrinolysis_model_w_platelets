@@ -559,7 +559,7 @@ end
 function runModelWithParamsChangeICReturnAUC(params, currIC)
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=90.0
+	TSTOP=60.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -583,7 +583,7 @@ end
 function runModelWithParamsChangeICReturnA(params, currIC)
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=90.0
+	TSTOP=60.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -609,7 +609,7 @@ end
 function runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=90.0
+	TSTOP=60.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -618,6 +618,7 @@ function runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
 	#params[47]=curr_platelets
 	modelparams = params[1:77]
 	curr_platelets=genPlatelets
+	initial_condition_vector=genIC
 	dict = buildCompleteDictFromOneVector(modelparams)
 	tPA = genIC[16]
 	dict["FACTOR_LEVEL_VECTOR"]=genExp
@@ -635,7 +636,7 @@ end
 function runModelWithParamsChangeICReturnA(params)
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=90.0
+	TSTOP=60.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
@@ -660,7 +661,7 @@ function runModelWithParamsSetICReturnROTEM(params)
 	close("all")
 	TSTART = 0.0
 	Ts = .02
-	TSTOP=90.0
+	TSTOP=60.0
 	TSIM = collect(TSTART:Ts:TSTOP)
 	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
