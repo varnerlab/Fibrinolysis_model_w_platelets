@@ -240,7 +240,7 @@ function plotAllCurveSameProb()
 	allp = readdlm("../LOOCV/bestparamsForBatch_10_14_02_19.txt")
 	#global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
 	kin_params=mean(allp, dims=1)
-	originalIC = readdlm("../solveInverseProb/Master_ics_to_match_11_03_19.txt", ',')
+	originalIC = readdlm("../solveInverseProb/Master_ics_to_match_11_03_19_later.txt", '\n')
 	curr_exp = originalIC[1:8]
 	curr_ICs = originalIC[9:end-1]
 	curr_platelets = originalIC[end]

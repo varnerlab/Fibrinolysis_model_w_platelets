@@ -349,7 +349,7 @@ function runPSOSameProb(seed,iter)
 	@show x0
 	@show typeof(x0)
 	numFevals = 300
-	res=Optim.optimize(objective_six_metrics_weighted, lbs, ups,x0, ParticleSwarm(n_particles=50), Optim.Options(iterations=numFevals))
+	res=Optim.optimize(objective_six_metrics_weighted, lbs, ups,x0, ParticleSwarm(n_particles=50, lower=lbs, upper=ups), Optim.Options(iterations=numFevals))
 	@show res
 	@show summary(res)
 	
@@ -359,3 +359,6 @@ end
 #for k in 1:50
 #	runNLoptSameProb(k+54354,k)
 #end
+for k in 3:100
+	runPSOSameProb(k+1235,k)
+end
