@@ -17,8 +17,6 @@ function generateMasterCurve(seed)
 	global kin_params=mean(allp, dims=1)
 	d = buildCompleteDictFromOneVector(kin_params)
 	nominal_ICs = d["INITIAL_CONDITION_VECTOR"]
-	#add some tPA
-	nominal_ICs[16]=.073
 	#nominal_ICs=[1106.0, 0.0, 60.0, 0.0, 2686.0, 0.79, 3.95, 0.0, 0.0, 7900.0, 971.7, 1.58, 0.0, 0.0, 0.0, 932.2, 0.4424, 0.0]
 	#nominal_experimental=[1.975,15.8,0.553,71.1,134.3,73.47,70.0]
 	nominal_experimental = d["FACTOR_LEVEL_VECTOR"]
@@ -26,18 +24,18 @@ function generateMasterCurve(seed)
 
 	#@show size(nominal_experimental), size(nominal_ICs), size(platelets)
 
-	#concat together
+#	#concat together
 	all_nominal =vcat(nominal_experimental,nominal_ICs, platelets)
-	#create upper and lower bounds
-	lbs = zeros(size(all_nominal))
-	ups  =4*all_nominal
-	#make it possible for things that are zero to move some
-	#ups[ups.==0]=2.0
-	ups[ups.==0]=fill(2.0, size(ups[ups.==0]))
-	#ups[9]=.1 #limit the amount of FIIa we can start with
-	#@show all_nominal[9]
-	#bound that we must have some prothrombin
-	#lbs[8]=100.0
+#	#create upper and lower bounds
+#	lbs = zeros(size(all_nominal))
+#	ups  =4*all_nominal
+#	#make it possible for things that are zero to move some
+#	#ups[ups.==0]=2.0
+#	ups[ups.==0]=fill(2.0, size(ups[ups.==0]))
+#	#ups[9]=.1 #limit the amount of FIIa we can start with
+#	#@show all_nominal[9]
+#	#bound that we must have some prothrombin
+#	#lbs[8]=100.0
 
 	#replace zeros in nominal conditions with eps, otherwise NLopt gets upset
 	all_nominal[all_nominal.==0]=fill(eps(), size(all_nominal[all_nominal.==0]))
@@ -48,6 +46,8 @@ function generateMasterCurve(seed)
 	#create our data
 	#conditions taken from SampleSingleParameterSet adjustments to IC and experimental conditions
 	temp_IC = d["INITIAL_CONDITION_VECTOR"]
+	#add some tPA
+	temp_IC[16]=.073
 	temp_exp = d["FACTOR_LEVEL_VECTOR"]
 	temp_platelets = d["PLATELET_PARAMS"][5] 
 	stretchfactor = 2.0 #for setting upper and lower bounds of our generated ROTEM curve
@@ -58,7 +58,7 @@ function generateMasterCurve(seed)
 
 	genIC = vec(genIC)
 	genExp = vec(genExp)
-	tPA = genIC[12]
+	tPA = genIC[16]
 
 	isPhysical = testIfPhysical(kin_params,genIC,genExp,genPlatelets)
 	while(!isPhysical)
@@ -70,13 +70,13 @@ function generateMasterCurve(seed)
 		genExp = vec(genExp)
 		#let time delay range between 400 and 1500
 		genMX = 400+rand()*(1500-400)
-		tPA = genIC[12]
+		tPA = genIC[16]
 		@show genIC, genExp, genPlatelets, genMX, tPA
-		isPhysical = testIfPhysical(kin_params,genIC,genExp,genPlatelets)
+		@time isPhysical = testIfPhysical(kin_params,genIC,genExp,genPlatelets)
 	end
 
 	#Store our ICS to disk
-	writedlm(string("../solveInverseProb/Master_ics_to_match_11_03_19_later", ".txt"), hcat(genExp', genIC', genPlatelets), ',')
+	writedlm(string("../solveInverseProb/Master_ics_to_match_13_03_19_", ".txt"), hcat(genExp', genIC', genPlatelets), ',')
 	#generate the curve we're fitting
 	T,R =runModelWithParamsChangeICReturnA(kin_params,genIC,genExp,genPlatelets)
 	@show T[end]
@@ -85,7 +85,7 @@ function generateMasterCurve(seed)
 	plot(T, -R, "k", linewidth =2)
 	xlabel("Time (minutes)", fontsize = 30)
 	ylabel("Clot Amplitude (mm)", fontsize = 30)
-	savefig("../solveInverseProb/MasterCurve_11_03_19.pdf")
+	savefig("../solveInverseProb/MasterCurve_13_03_19.pdf")
 
 	#describe the curve we've created'
 	metrics = calculateCommonMetrics(R,T)
@@ -190,7 +190,7 @@ function runNLoptSameProb(seed,iter)
 
 
 	#describe the curve we've created'
-	genMetrics = readdlm("../solveInverseProb/Master_Metrics_to_match_11_03_19_later.txt")	
+	genMetrics = readdlm("../solveInverseProb/Master_Metrics_to_match_13_03_19.txt")	
 
 	target_CT = genMetrics[1]
 	target_CFT = genMetrics[2]
@@ -304,7 +304,7 @@ function runPSOSameProb(seed,iter)
 		genExp = vec(genExp)
 		#let time delay range between 400 and 1500
 		genMX = 400+rand()*(1500-400)
-		tPA = genIC[12]
+		tPA = genIC[16]
 		@show genIC, genExp, genPlatelets, genMX
 		isPhysical = testIfPhysical(kin_params,genIC,genExp,genPlatelets)
 		count = count+1
@@ -313,7 +313,7 @@ function runPSOSameProb(seed,iter)
 
 
 	#describe the curve we've created'
-	genMetrics = readdlm("../solveInverseProb/Master_Metrics_to_match_11_03_19_later.txt")	
+	genMetrics = readdlm("../solveInverseProb/Master_Metrics_to_match_13_03_19.txt")	
 
 	target_CT = genMetrics[1]
 	target_CFT = genMetrics[2]
@@ -353,12 +353,12 @@ function runPSOSameProb(seed,iter)
 	@show res
 	@show summary(res)
 	
-	writedlm(string("../solveInverseProb/foundIcs_11_03_19_", iter, "solvingSameProb.txt"), Optim.minimizer(res))
+	writedlm(string("../solveInverseProb/foundIcs_13_03_19_", iter, "solvingSameProb.txt"), Optim.minimizer(res))
 end
 #@sync @distributed 
 #for k in 1:50
 #	runNLoptSameProb(k+54354,k)
 #end
-for k in 3:100
-	runPSOSameProb(k+1235,k)
-end
+#for k in 3:100
+#	runPSOSameProb(k+1235,k)
+#end

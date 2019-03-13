@@ -4,9 +4,10 @@ include("utilities.jl")
 include("Kinetics.jl")
 include("Control.jl")
 #include("plotData.jl")
-#using Sundials
+using Sundials #for CVODE_BDF
 #using ODE
 using DifferentialEquations
+
 #using PyPlot
 #using PyCall
 #PyCall.PyDict(matplotlib["rcParams"])["font.sans-serif"] = ["Helvetica"]
@@ -496,7 +497,7 @@ function runModelWithParamsReturnAUC(params,tPA)
 	#fbalances(t,y)= Balances(t,y,dict) 
 	#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, maxiters = 1E6, dt=.02, abstol = 1E-6, reltol=1E-3)
+	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 10, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	A = convertToROTEM(t,X,tPA)
@@ -526,7 +527,7 @@ function runModelWithParamsReturnA(params,tPA)
 	#fbalances(t,y)= Balances(t,y,dict) 
 	#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, maxiters = 1E6, dt=.02, abstol = 1E-6, reltol=1E-3)
+	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	A = convertToROTEMPlateletContribution(t,X, tPA,platelet_count)
@@ -573,7 +574,7 @@ function runModelWithParamsChangeICReturnAUC(params, currIC)
 	TSIM = collect(TSTART:Ts:TSTOP)
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, maxiters = 1E6, dt=.02, abstol = 1E-6, reltol=1E-3)
+	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	A = convertToROTEM(t,X,tPA)
@@ -598,7 +599,7 @@ function runModelWithParamsChangeICReturnA(params, currIC)
 	TSIM = collect(TSTART:Ts:TSTOP)
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, maxiters = 1E6, dt=.02, abstol = 1E-6, reltol=1E-3)
+	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	#A = convertToROTEM(t,X,tPA)
@@ -625,7 +626,7 @@ function runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
 	TSIM = collect(TSTART:Ts:TSTOP)
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, maxiters = 1E6, dt=.02, abstol = 1E-6, reltol=1E-3)
+	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	#A = convertToROTEM(t,X,tPA)
@@ -650,7 +651,7 @@ function runModelWithParamsChangeICReturnA(params)
 	TSIM = collect(TSTART:Ts:TSTOP)
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, maxiters = 1E6, dt=.02, abstol = 1E-6, reltol=1E-3)
+	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	A =  convertToROTEMPlateletContribution(t,x, tPA,curr_platelets)
@@ -677,7 +678,7 @@ function runModelWithParamsSetICReturnROTEM(params)
 	TSIM = collect(TSTART:Ts:TSTOP)
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, maxiters = 1E6, dt=.02, abstol = 1E-6, reltol=1E-3)
+	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	A = convertToROTEM(t,X,tPA)

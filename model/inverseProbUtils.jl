@@ -200,7 +200,7 @@ function objective_six_metrics_weighted(params)
 	curr_ICs = params[9:end-1]
 	curr_platelets = params[end]
 	tPA = curr_ICs[12]
-	T,R =runModelWithParamsChangeICReturnA(kin_params,curr_ICs,curr_exp,curr_platelets)
+	@time T,R =runModelWithParamsChangeICReturnA(kin_params,curr_ICs,curr_exp,curr_platelets)
 	#plot(T,R)
 	#CT,CFT,alpha,MCF,A10,A20,LI30,LI60
 	metrics = calculateCommonMetrics(R,T)
