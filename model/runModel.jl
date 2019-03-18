@@ -43,7 +43,7 @@ function solveAdjBalances(TSTART,TSTOP,Ts,parameter_index, PROBLEM_DICTIONARY)
 	@show size(initial_condition_vector)
 	epsilon = 1e-6
 	fbalances(t,y) = AdjBalances(t,y,parameter_index, PROBLEM_DICTIONARY)
-	(t,y) =ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0)
+	(t,y) =ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-4, minstep = 1E-8,maxstep = 1.0)
 	#Map
 	  number_of_timesteps = length(t)
 	  number_of_states = length(initial_condition_vector)
@@ -227,7 +227,7 @@ function plotFluxes(pathToData,t)
 		@show size(t)
 		@show size(data[:,j])
 		currdata = data[:,j]
-		currdata[currdata.>=1E6] = 0.0
+		currdata[currdata.>=1e6] = 0.0
 		plot(t, currdata, ".k")
 		title(string("reaction ", j))
 	end
@@ -412,7 +412,7 @@ function runModelWithMultipleParams(pathToParams,pathToData,index,savestr)
 		dict = createCorrectDict(dict, index)
 		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
 		fbalances(t,y)= Balances(t,y,dict) 
-		t,X = ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0, points=:specified)
+		t,X = ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-4, minstep = 1E-8,maxstep = 1.0, points=:specified)
 		@show size(TSIM)
 		@show size(t)
 		@show size(X)
@@ -457,7 +457,7 @@ function runModelWithParams(params)
 	fbalances(t,y)= Balances(t,y,dict)
 	toc()
 	tic() 
-	t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
+	t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-4, minstep = 1E-8,maxstep = 1.00)
 	toc()
 #	plotThrombinWData(t,X,pathToData)
 #	figure()
@@ -495,9 +495,9 @@ function runModelWithParamsReturnAUC(params,tPA)
 	initial_condition_vector[16]=tPA
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	#fbalances(t,y)= Balances(t,y,dict) 
-	#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
+	#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-4, minstep = 1E-8,maxstep = 1.00)
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 10, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
+	sol = solve(prob, alg_hints=[:stiff] , dt = 2.0, dtmax = 10, abstol = 1E-6, reltol = 1E-4, force_dtmin=true, saveat = .1,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	A = convertToROTEM(t,X,tPA)
@@ -525,9 +525,9 @@ function runModelWithParamsReturnA(params,tPA)
 	platelet_count = params[47]
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	#fbalances(t,y)= Balances(t,y,dict) 
-	#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
+	#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-4, minstep = 1E-8,maxstep = 1.00)
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
+	sol = solve(prob, alg_hints=[:stiff] , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-4, force_dtmin=true, saveat = .1,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	A = convertToROTEMPlateletContribution(t,X, tPA,platelet_count)
@@ -551,7 +551,7 @@ function runModelWithParamsSetICReturnAUC(params)
 	initial_condition_vector = params[78:end]
 	tPA = initial_condition_vector[16]
 	fbalances(t,y)= Balances(t,y,dict) 
-	t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.0)
+	t,X=ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-4, minstep = 1E-8,maxstep = 1.0)
 	A = convertToROTEM(t,X,tPA)
 	AUC=calculateAUC(t, A)
 	return AUC
@@ -574,7 +574,7 @@ function runModelWithParamsChangeICReturnAUC(params, currIC)
 	TSIM = collect(TSTART:Ts:TSTOP)
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
+	sol = solve(prob, alg_hints=[:stiff] , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-4, force_dtmin=true, saveat = .1,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	A = convertToROTEM(t,X,tPA)
@@ -599,7 +599,7 @@ function runModelWithParamsChangeICReturnA(params, currIC)
 	TSIM = collect(TSTART:Ts:TSTOP)
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
+	sol = solve(prob, alg_hints=[:stiff] , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-4, force_dtmin=true, saveat = .1,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	#A = convertToROTEM(t,X,tPA)
@@ -626,7 +626,7 @@ function runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
 	TSIM = collect(TSTART:Ts:TSTOP)
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
+	sol = solve(prob, alg_hints=[:stiff] , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-4, force_dtmin=true, saveat = .1,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	#A = convertToROTEM(t,X,tPA)
@@ -651,7 +651,7 @@ function runModelWithParamsChangeICReturnA(params)
 	TSIM = collect(TSTART:Ts:TSTOP)
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
+	sol = solve(prob, alg_hints=[:stiff] , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-4, force_dtmin=true, saveat = .1,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	A =  convertToROTEMPlateletContribution(t,x, tPA,curr_platelets)
@@ -678,7 +678,7 @@ function runModelWithParamsSetICReturnROTEM(params)
 	TSIM = collect(TSTART:Ts:TSTOP)
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
-	sol = solve(prob, alg=AutoTsit5(Rosenbrock23()) , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-6, force_dtmin=true, saveat = 1.0,maxiters = 1e6)
+	sol = solve(prob, alg_hints=[:stiff] , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-4, force_dtmin=true, saveat = .1,maxiters = 1e6)
 	t =sol.t
 	X = sol
 	A = convertToROTEM(t,X,tPA)
@@ -736,7 +736,7 @@ function runModelWithParamsPeturbIC(params, num_runs)
 		initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
 		initial_condition_vector = peturbIC(initial_condition_vector, j)
 		fbalances(t,y)= Balances(t,y,dict) 
-		t,X = ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6,points=:specified)
+		t,X = ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-4,points=:specified)
 		@show size(TSIM)
 		@show size(t)
 		@show size(X)
@@ -779,7 +779,7 @@ function runModelWithParamsSetF8(params, FVIIIcontrol, index)
 	@show initial_condition_vector
 	@show dict["FVIII_CONTROL"]
 	fbalances(t,y)= Balances(t,y,dict) 
-	t,X = ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6)
+	t,X = ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-4)
 	plotThrombinWData(t,X,pathToData)
 	savefig(string("figures/AttemtingF8FittingSet",index,"_02_16_2017.pdf"))
 	#makeLoopPlots(t,X)
@@ -806,7 +806,7 @@ function runModelWithParamsSetF8OnePlot(fig,params, FVIIIcontrol, index)
 	@show initial_condition_vector
 	@show dict["FVIII_CONTROL"]
 	fbalances(t,y)= Balances(t,y,dict) 
-	t,X = ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6)
+	t,X = ODE.ode23s(fbalances,(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-4)
 	plotThrombinWData(t,X,pathToData, string(index/(6+.1)))
 	#savefig(string("figures/AttemtingF8FittingSet",index,"_02_16_2017.pdf"))
 	#makeLoopPlots(t,X)

@@ -1,5 +1,6 @@
 using PyPlot
 using PyCall
+using DelimitedFiles
 PyDict(pyimport("matplotlib")["rcParams"])["font.sans-serif"] = ["Helvetica"]
 
 function makeSobolGraphNoAnnotations()
@@ -196,17 +197,18 @@ function makeAllSobolGraphsOnlyParams()
 		@show m
 		fig=figure(figsize=[25,15])
 		#data = readdlm("sensitivity/soboloutputpm50percentOnlyIC_05_30_17N2000.txt")
-		data = readdlm(string("../sensitivity/SobolResultsOnlyParams_01_10_18_",m, ".txt"))
+		#data = readdlm(string("../sensitivity/SobolResultsOnlyParams_01_10_18_",m, ".txt"))
+		data = readdlm(string("../sensitivity/SobolResultsOnlyParams_3_08_19_",m, ".txt"))
 		topHalf = data[1:numparams+1, :]
 		@show topHalf
 		usefulData = topHalf[2:end, :]
 		names =[]
 		for n in usefulData[:,1]
-			curr_name = replace(n, "initial_", "")
+			curr_name = replace(n, "initial_"=> "")
 			if(length(curr_name)>char_cutoff)
-				curr_name = replace(curr_name, "_", "\n")
+				curr_name = replace(curr_name, "_"=> "\n")
 			else
-				curr_name = replace(curr_name, "_", " ")
+				curr_name = replace(curr_name, "_"=> " ")
 			end
 			#push!(names, replace(replace(n, "initial_", ""), "_", "\n"))
 			push!(names, curr_name)
@@ -223,7 +225,7 @@ function makeAllSobolGraphsOnlyParams()
 		#lines and label for kinetic parameters
 		ax[:xaxis][:set_ticklabels](names, rotation = 90, fontsize = 6)
 		plt[:tight_layout]()
-		savefig(string("../sensitivity/SobolTotalOrderOnlyParamsN500_01_10_18",m, ".pdf"))
+		savefig(string("../sensitivity/SobolTotalOrderOnlyParamsN500_03_08_19",m, ".pdf"))
 	end
 	close("all")
 end
@@ -241,7 +243,9 @@ function makeSobolGraph()
 	close("all")
 	numparams = 77
 	fig=figure(figsize=[25,15])
-	data = readdlm("../sensitivity/SobolOputput_pm50_N5000_04_24_2017.txt")
+	#data = readdlm("../sensitivity/SobolOputput_pm50_N5000_04_24_2017.txt")
+	m = "AUC"
+	data = readdlm(string("../sensitivity/SobolResultsOnlyParams_3_08_19_",m, ".txt"))
 	topHalf = data[1:numparams+1, :]
 	@show topHalf
 	usefulData = topHalf[2:end, :]
@@ -268,7 +272,7 @@ function makeSobolGraph()
 		fontsize=30,
 		xy=[0;-.03],
 		xycoords=("data","axes fraction"),
-		xytext=[17;-.03],
+		xytext=[19;-.03],
 		textcoords=("data","axes fraction"),
 		ha="right",
 		va="top")
@@ -339,7 +343,7 @@ function makeSobolGraph()
 		fontsize=30,
 		xy=[47;-.03],
 		xycoords=("data","axes fraction"),
-		xytext=[69,-.03],
+		xytext=[73,-.03],
 		textcoords=("data","axes fraction"),
 		ha="right",
 		va="top")
@@ -362,37 +366,47 @@ function makeSobolGraph()
 		ha="right",
 		va="top")
 	#label columns of interest
-	annotate("k_inhibition_ATIII",
-		xy=[8;.35],# Arrow tip
-		xycoords="data", # Coordinates in in "data" units
-		xytext=[9;.45], # Text offset from tip
-		textcoords="data",
-		ha="center",
-		va="top",
-		fontsize=30,
-		arrowprops=Dict("facecolor"=>"black", "width"=>.5, "headwidth"=>3)) #
+#	annotate("k_inhibition_ATIII",
+#		xy=[8;.35], Arrow tip
+#		xycoords="data",  Coordinates in in "data" units
+#		xytext=[9;.45],  Text offset from tip
+#		textcoords="data",
+#		ha="center",
+#		va="top",
+#		fontsize=30,
+#		arrowprops=Dict("facecolor"=>"black", "width"=>.5, "headwidth"=>3)) 
 
 	annotate("Trigger Control Parameters",
-		xy=[18.5,0.05],
+		xy=[18.5,0.45],
 		xycoords="data",
-		xytext=[20.5,0.15],
+		xytext=[20.5,0.55],
 		textcoords="data",
 		ha="center",
 		va="top",
 		fontsize=30,
 		arrowprops = Dict("facecolor"=> "black", "width"=>.5))
 
-	annotate("k_cat_fibrinogen",
-		xy=[47;.33],# Arrow tip
-		xycoords="data", # Coordinates in in "data" units
-		xytext=[46;.45], # Text offset from tip
+	annotate("FXIII Control\n Parameters",
+		xy=[70,0.8],
+		xycoords="data",
+		xytext=[55,0.95],
 		textcoords="data",
 		ha="center",
 		va="top",
 		fontsize=30,
-		arrowprops=Dict("facecolor"=>"black", "width"=>.5, "headwidth"=>3))
+		arrowprops = Dict("facecolor"=> "black", "width"=>.5))
+
+#	annotate("k_cat_fibrinogen",
+#		xy=[47;.33],# Arrow tip
+#		xycoords="data", # Coordinates in in "data" units
+#		xytext=[46;.45], # Text offset from tip
+#		textcoords="data",
+#		ha="center",
+#		va="top",
+#		fontsize=30,
+#		arrowprops=Dict("facecolor"=>"black", "width"=>.5, "headwidth"=>3))
 	xlabel("\nParameter Index", fontsize = 40)
 
-	savefig("../sensitivity/SobolTotalOrderN5000_24_08_17.pdf")
+	savefig(string("../sensitivity/SobolTotalOrderOnlyParamsN500_03_08_19",m, "Pretty.pdf"))
 	
 end

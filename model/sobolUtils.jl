@@ -152,16 +152,20 @@ end
 function concatSobolResults()
 	#filestr1 = "../sensitivity/02_05_18_MetricsForSobolPM50PercentOnlyParamsN1000_" #change me
 	#filestr1 = "../sensitivity/01_10_18_MetricsForSobolPM50PercentOnlyParamsN_"
-	filestr1 = "../sensitivity/05_10_18_MetricsForSobolPM50PercentOnlyICN100_"
+	#filestr1 = "../sensitivity/05_10_18_MetricsForSobolPM50PercentOnlyICN100_"
+	filestr1 = "../sensitivity/3_08_19_MetricsForSobolPM50PercentOnlyParamsN500_"
 	filestr2="_of_4.txt"
 	str = ""
 	for j in collect(1:4)
 		fn = string(filestr1, j, filestr2)
 		#currstr = readstring(fn)
-		currstr = replace(readstring(fn), ",", " ")
+		f = open(fn)
+		currstr=read(f, String)
+		close(f)
+		currstr = replace(currstr, ","=> " ")
 		@show count(c->c=='\n', currstr)
 		str = string(str, currstr)
 	end
-	write("../sensitivity/AllSobol_05_10_18_MetricsForSobolPM50PercentOnlyICN100.txt", str) #and me
+	write("../sensitivity/AllSobol_3_08_19_MetricsForSobolPM50PercentOnlyParamsN500.txt", str) #and me
 end
 

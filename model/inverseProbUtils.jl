@@ -3,11 +3,39 @@ using PyPlot
 using DelimitedFiles
 using Statistics
 using Random
+using Distributions
 
 include("runModel.jl")
 
+function sampleSpace(lower,upper,cond)
+	res = zeros(1)
+	if(size(cond,1)==1)
+		return rand(Normal(cond, (upper*cond-lower*cond)/6),1)[1]
+	else
+		for j = 1:maximum(size(cond))
+			#@show (upper*cond[j]-lower*cond[j])
+			if(cond[j]==0)
+				temp = rand( Truncated(Normal(0, .005), 0, .01))
+			else
+				temp = rand(Normal(cond[j], (upper*cond[j]-lower*cond[j])/8),1)[1]
+			end
+			#@show temp
+			push!(res, temp)
+		end
+	end
+	#@show cond, res
+	return res[2:end] #chop off first element
+end
+
 function testIfPhysical(params,genIC,genExp,genPlatelets)
 	T,R=runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
+	plot(T,R)
+	#check to make sure solver finished
+	if(T[end]<59)
+		println("Didn't finish solving")
+		isPhysical=false
+		return isPhysical
+	end
 
 	#describe the curve we've created'
 	metrics = calculateCommonMetrics(R,T)
@@ -22,7 +50,7 @@ function testIfPhysical(params,genIC,genExp,genPlatelets)
 
 
 	temp_target=[target_CT, target_CFT, target_alpha, target_MCF,target_MaximumLysis, target_AUC, target_LI30]
-	#@show temp_target
+	@show temp_target
 	if(true in (temp_target .<0))
 		isPhysical = false
 	else
@@ -33,7 +61,8 @@ function testIfPhysical(params,genIC,genExp,genPlatelets)
 	#MA = MCF
 	#R = CT
 	#K = CFT
-	if(target_MCF<49.7 || target_MCF>72.7)
+	#if(target_MCF<49.7 || target_MCF>72.7)
+	if(target_MCF<40.0 || target_MCF>72.7) #looser contstraints
 		isPhysical=false
 	end
 	if(target_CT<3.8*60  || target_CT>9.8*60)
@@ -240,25 +269,41 @@ function plotAllCurveSameProb()
 	allp = readdlm("../LOOCV/bestparamsForBatch_10_14_02_19.txt")
 	#global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
 	kin_params=mean(allp, dims=1)
-	originalIC = readdlm("../solveInverseProb/Master_ics_to_match_11_03_19_later.txt", '\n')
+	originalIC = readdlm("../solveInverseProb/Master_ics_to_match_13_03_19_.txt", ',')
 	curr_exp = originalIC[1:8]
 	curr_ICs = originalIC[9:end-1]
 	curr_platelets = originalIC[end]
 	tPA = originalIC[12]
 	T,R =runModelWithParamsChangeICReturnA(kin_params,curr_ICs,curr_exp,curr_platelets)
-	figure()
+	figure(figsize=[15,15])
 	plot(T,R, "k", linewidth=2)
 	
 	numSims = 1
-	for k = 1:numSims
-		currEstICs = readdlm(string("../solveInverseProb/foundIcs_11_03_19_", k, "solvingSameProb.txt"))
+	solved=[1,2,201,202,203]
+	allCurves = zeros(size(solved,1), size(R,1))
+	count = 1
+	for k in solved
+		currEstICs = readdlm(string("../solveInverseProb/foundIcs_13_03_19_", k, "solvingSameProb.txt"))
 		curr_exp = currEstICs[1:8]
 		curr_ICs = currEstICs[9:end-1]
 		curr_platelets = currEstICs[end]
 		tPA = currEstICs[12]
 		T,R=runModelWithParamsChangeICReturnA(kin_params,curr_ICs,curr_exp,curr_platelets)
-		plot(T,R, color = "gray")
+		plot(T,R, color = "gray", alpha =.5, linewidth=.2)
+		@show size(allCurves[count,:]), size(R)
+		allCurves[count,:]=R
+		count = count+1
 	end
 	xlabel("Time (minutes)", fontsize = 30)
 	ylabel("Clot Amplitude (mm)", fontsize = 30)
+	@show size(mean(allCurves, dims=1))
+	@show size(T)
+	plot(T, vec(mean(allCurves, dims=1)), color="lightblue")
+	ax = gca()
+	ax[:tick_params]("both",labelsize=24) 
+	numSamples = size(solved,1)
+	upperlim = mean(allCurves,dims=1)+1.95*std(allCurves,dims=1)/sqrt(numSamples)
+	lowerlim = mean(allCurves,dims=1)-1.95*std(allCurves,dims=1)/sqrt(numSamples)
+	fill_between(T, vec(upperlim), vec(lowerlim), color = "lightblue", alpha = .5)
+	savefig("../figures/solvingSameProbSameCurves_13_03_19.pdf")
 end

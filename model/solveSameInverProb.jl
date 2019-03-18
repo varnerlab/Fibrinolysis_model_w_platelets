@@ -359,6 +359,6 @@ end
 #for k in 1:50
 #	runNLoptSameProb(k+54354,k)
 #end
-#for k in 3:100
-#	runPSOSameProb(k+1235,k)
-#end
+for k in 201:300
+	runPSOSameProb(k+1235,k)
+end
