@@ -256,11 +256,17 @@ function runPSONewProb(seed,iter)
 	
 	@show (all_nominal .< ups)
 	@show (all_nominal .> lbs)
-	#give our generated IC as initial guess
+	#give create our new initial guess
+	genIC = sampleSpace(stretchfactorlower, stretchfactorupper, temp_IC)
+	genIC[7]=.005 #make trigger set
+	genExp = sampleSpace(stretchfactorlower, stretchfactorupper, temp_exp)
+	genPlatelets=sampleSpace(stretchfactorlower, stretchfactorupper, temp_platelets)
+	genIC = vec(genIC)
+	genExp = vec(genExp)
 	x0 =vcat(genExp, genIC, genPlatelets)
 	@show x0
 	@show typeof(x0)
-	numFevals = 20
+	numFevals = 10
 	res=Optim.optimize(objective_six_metrics_weighted, lbs, ups,x0, ParticleSwarm(n_particles=40, lower=lbs, upper=ups), Optim.Options(iterations=numFevals))
 	@show res
 	@show summary(res)
