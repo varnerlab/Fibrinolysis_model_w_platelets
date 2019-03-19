@@ -29,7 +29,7 @@ end
 
 function testIfPhysical(params,genIC,genExp,genPlatelets)
 	T,R=runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
-	plot(T,R)
+	#plot(T,R)
 	#check to make sure solver finished
 	if(T[end]<59)
 		println("Didn't finish solving")
@@ -75,7 +75,7 @@ function testIfPhysical(params,genIC,genExp,genPlatelets)
 #		isPhysical=false
 #	end
 
-	return isPhysical
+	return isPhysical, temp_target
 end
 
 function objective_f(params::Vector, grad::Vector)
@@ -279,7 +279,7 @@ function plotAllCurveSameProb()
 	plot(T,R, "k", linewidth=2)
 	
 	numSims = 1
-	solved=[1,2,201,202,203]
+	solved=[collect(1:6);collect(201:206)]
 	allCurves = zeros(size(solved,1), size(R,1))
 	count = 1
 	for k in solved
@@ -306,4 +306,80 @@ function plotAllCurveSameProb()
 	lowerlim = mean(allCurves,dims=1)-1.95*std(allCurves,dims=1)/sqrt(numSamples)
 	fill_between(T, vec(upperlim), vec(lowerlim), color = "lightblue", alpha = .5)
 	savefig("../figures/solvingSameProbSameCurves_13_03_19.pdf")
+end
+
+function analyzeDiffICs(startIdx, endIdx)
+	close("all")
+	trueICStr = "../solveInverseProb/solveDiffProb/ics_to_match_18_03_19_iter"
+	foundICStr ="../solveInverseProb/solveDiffProb/foundIcs_18_03_19_"
+	global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
+	d = buildCompleteDictFromOneVector(kin_params)
+	nominal_ICs = d["INITIAL_CONDITION_VECTOR"]
+	#nominal_ICs=[1106.0, 0.0, 60.0, 0.0, 2686.0, 0.79, 3.95, 0.0, 0.0, 7900.0, 971.7, 1.58, 0.0, 0.0, 0.0, 932.2, 0.4424, 0.0]
+	#nominal_experimental=[1.975,15.8,0.553,71.1,134.3,73.47,70.0]
+	nominal_experimental = d["FACTOR_LEVEL_VECTOR"]
+	platelets = d["PLATELET_PARAMS"][5]
+
+	@show size(nominal_experimental), size(nominal_ICs), size(platelets)
+
+	#concat together
+	all_nominal =vcat(nominal_experimental,nominal_ICs, platelets)
+	errCutoff = 1.0
+
+	exp_condition_names = ["TFPI", "FV", "FVIII", "FIX", "FX", "FXIII", "TAFI", "FXIII"]
+	IC_names =["FII", "FIIa", "PC", "APC", "ATIII", "TM", "TRIGGER","Fraction of Platelets Activated", "FV+FX", "FV+FXa","Prothrombinase Complex", "Fibrin","Plasmin","Fibrinogen", "Plasminogen", "tPA", "uPA", "Fibrin \n monomer", "Protofibril", "antiplasmin", "PAI_1", "Fiber"]
+	selidxs = [1,2,3,4,5,6,7,8,9,11,13,14,16,17,20,21,22,23]
+	allnames = vcat(exp_condition_names, IC_names)
+	numparams = maximum(size(allnames))
+#	data = Array{Any,numparams}
+#	
+#	for j = 1:numparams
+#		data[j] = []
+#	end
+	data = zeros(size(selidxs,1), maximum(size(startIdx:endIdx)))
+
+	for j = startIdx:endIdx
+		currFound = readdlm(string(foundICStr, j, ".txt"))
+		currGiven = readdlm(string(trueICStr, j, ".txt"),',')
+		@show currFound
+		@show currGiven
+		count = 1
+		for k in selidxs
+			#@show currFound[k]
+			#@show currGiven[k]
+			data[count,j]=((currFound[count]/all_nominal[selidxs[count]]-currGiven[count]/all_nominal[selidxs[count]])^2)^.5
+			count = count+1
+		end
+	end
+	@show data, size(data)
+	meandata =mean(data,dims=1)
+#	meandata = Array{Float64,maximum(size(selidxs)), size(data[1],1)}
+#	for k =1:maximum(size(selidxs))
+#		meandata[k,:]=(data[selidxs[k]])
+#	end
+
+	figure(figsize = (20,15))
+	#@show size(data[1])
+	numSamples = size(data[1],1)
+	@show data
+	#boxplot(data[selidxs]*100, "k")
+	positions = collect(1:maximum(size(selidxs)))
+	@show typeof(positions)
+	@show typeof(mean(meandata,2)*100)
+	@show numSamples
+	#errorbars will be std error of the mean
+	bar(positions, squeeze(mean(meandata,dims=2),2)*100, yerr = squeeze(std(meandata,dims=2),2)*100/sqrt(numSamples),color = "lightblue")
+	ax = gca()
+	#ax[:set_yscale]("log")
+	ax[:xaxis][:set_ticks](positions)
+	#axis([0,numparams,0,3.6])
+	ax[:tick_params](labelsize=20)
+	#lines and label for kinetic parameters
+	ax[:xaxis][:set_ticklabels](allnames[selidxs], rotation = 45, fontsize = 24, horizontalalignment = "right")
+	axis("tight")
+	#@show size(positions), size(vec(trueICs))
+	ax = gca()
+	ax[:set_ylim]([0,50])
+	ylabel("Initial Concentration\n (% difference of nominal)", fontsize = 36)
+	savefig("figs/DiffInICSolvingDiffProb_05_09_18.pdf",bbox_inches="tight")
 end

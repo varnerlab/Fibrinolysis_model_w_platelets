@@ -200,8 +200,7 @@ function runPSONewProb(seed,iter)
 	genExp = vec(genExp)
 	tPA = genIC[12]
 
-	isPhysical = testIfPhysical(kin_params,genIC,genExp,genPlatelets)
-	max_tests = 30
+	isPhysical,temp_target = testIfPhysical(kin_params,genIC,genExp,genPlatelets)
 	count =1 #so we get out of this loop is we've spent long enough guessing. We don't need a great guess to start with'
 	while(!isPhysical)
 		#this parameters produce a nonsensical results, regenerate and repeat as necceassary 
@@ -217,28 +216,24 @@ function runPSONewProb(seed,iter)
 		#let time delay range between 400 and 1500
 		tPA = genIC[16]
 		@show genIC, genExp, genPlatelets
-		isPhysical = testIfPhysical(kin_params,genIC,genExp,genPlatelets)
+		isPhysical, temp_target= testIfPhysical(kin_params,genIC,genExp,genPlatelets)
 		count = count+1
 	end
 
 
 	#Store our ICS to disk
-	writedlm(string("../solveInverseProb/solveDiffProb/ics_to_match_18_03_19_iter",iter ,".txt"), hcat(genExp', genIC', genPlatelets), ',')
+	writedlm(string("../solveInverseProb/solveDiffProb_fewerEvals/ics_to_match_19_03_19_iter",iter ,".txt"), hcat(genExp', genIC', genPlatelets), ',')
 
-	#generate the curve we're fitting
-	R,T =runModelWithParamsChangeICReturnA(kin_params,genIC,genExp,genPlatelets)
 
-	#describe the curve we've created'
-	metrics = calculateCommonMetrics(R,T)
-	target_CT = metrics[1]
-	target_CFT = metrics[2]
-	target_alpha = metrics[3]
-	target_MCF = metrics[4]
+	target_CT = temp_target[1]
+	target_CFT = temp_target[2]
+	target_alpha =temp_target[3]
+	target_MCF = temp_target[4]
 	#experiment run for 60 mins =1 hours
-	target_MaximumLysis = calculateLysisAtTime(R,T,60.0)
-	target_AUC = calculateAUC(R,T)
+	target_MaximumLysis = temp_target[5]
+	target_AUC = temp_target[6]
 	stats= hcat(target_CT, target_CFT, target_alpha, target_MCF, target_MaximumLysis, target_AUC)
-	writedlm(string("../solveInverseProb/solveDiffProb/Metrics_to_match_18_03_19_iter",iter, ".txt"), stats)
+	writedlm(string("../solveInverseProb/solveDiffProb_fewerEvals/Metrics_to_match_19_03_19_iter",iter, ".txt"), stats)
 
 	#use the median as characteritic scaling
 	scale_CT = 6.7*60
@@ -265,16 +260,18 @@ function runPSONewProb(seed,iter)
 	x0 =vcat(genExp, genIC, genPlatelets)
 	@show x0
 	@show typeof(x0)
-	numFevals = 200
+	numFevals = 20
 	res=Optim.optimize(objective_six_metrics_weighted, lbs, ups,x0, ParticleSwarm(n_particles=40, lower=lbs, upper=ups), Optim.Options(iterations=numFevals))
 	@show res
 	@show summary(res)
 	
-	writedlm(string("../solveInverseProb/solveDiffProb/foundIcs_18_03_19_", iter, ".txt"), Optim.minimizer(res))
-	writedlm(string("../solveInverseProb/solveDiffProb/ObjVal_18_03_19_", iter, ".txt"), Optim.minimum(res))
+	writedlm(string("../solveInverseProb/solveDiffProb_fewerEvals/foundIcs_19_03_19_", iter, ".txt"), Optim.minimizer(res))
+	writedlm(string("../solveInverseProb/solveDiffProb_fewerEvals/ObjVal_10_03_19_", iter, ".txt"), Optim.minimum(res))
 end
 
-
+for j =1:10
+	runPSONewProb(j+2490,j)
+end
 
 
 
