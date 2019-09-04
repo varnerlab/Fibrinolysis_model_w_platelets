@@ -556,8 +556,8 @@ function testAllBatchesAndMakeFigures()
 	allids =collect(11:14)
 	outputstr = "../LOOCV/POETS_info_14_02_19_PlateletContributionToROTEMFlatness1ToBeTestedOn" #only tPA 2
 	numParams = 77
-	#for j =1:numBatches
-	for j =10:numBatches
+	for j =1:numBatches
+	#for j =10:numBatches
 		println(string("On batch ", j))
 		currparams = zeros(numPerObj*numObjs*size(allids,1), numParams)
 		count = 1
@@ -572,8 +572,10 @@ function testAllBatchesAndMakeFigures()
 			count = count+1
 		end
 		writedlm(string("../LOOCV/bestparamsForBatch_", batch_number, "_14_02_19.txt"),currparams)
-		makePredictionFigurePlatletContributionToROTEM(currparams, string("../figures/LOOCV_14_02_19_Predicitions_after_batch", j, "final.pdf"),string("../figures/LOOCV_14_02_19_Predicitions_after_batch", j, "subfig.pdf"))
-		makeTrainingFigurePlatletContributionToROTEM(currparams, string("../figures/LOOCV_14_02_19_Training_after_batch", j, "final.pdf"),string("../figures/LOOCV_14_02_19_Training_after_batch", j, "subfig.pdf"))
+		MSEs_pred=makePredictionFigurePlatletContributionToROTEM(currparams, string("../figures/LOOCV_27_03_19_Predicitions_after_batch", j, "final.pdf"),string("../figures/LOOCV_27_03_19_Predicitions_after_batch", j, "subfig.pdf"))
+		MSEs_train=makeTrainingFigurePlatletContributionToROTEM(currparams, string("../figures/LOOCV_27_03_19_Training_after_batch", j, "final.pdf"),string("../figures/LOOCV_27_03_19_Training_after_batch", j, "subfig.pdf"))
+		writedlm(string("../LOOCV/MSEs/MSEs_train_batch", j,".txt"), MSEs_train,',')
+		writedlm(string("../LOOCV/MSEs/MSEs_pred_batch", j,".txt"), MSEs_pred, ',')
 	end
 end
 
@@ -587,6 +589,7 @@ function makeTrainingFigurePlatletContributionToROTEM(best_params, savestr_final
 	ids = [5,6,7,8]
 	tPAs = [0,2]
 	close("all")
+	MSEs = zeros(4,2)
 	fig,axarr = subplots(4,2,sharex="col",figsize=(15,15))
 	counter = 1
 	numParamSets = size(best_params,1)
@@ -597,6 +600,7 @@ function makeTrainingFigurePlatletContributionToROTEM(best_params, savestr_final
 			#bestparams=generateBestNparameters(8,ec,pc)
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(best_params, ids[j], tPAs[k], savestr,adjustICs)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
+			MSEs[j,k]=calculateMSE(TSIM, meanROTEM,  expdata)[1]
 			@show norm(meanROTEM), norm(expdata[:,2])
 			@show counter
 			curraxis=axarr[j,k]
@@ -616,10 +620,16 @@ function makeTrainingFigurePlatletContributionToROTEM(best_params, savestr_final
 
 			if(counter==7 || counter ==8)
 				#xlabel("Time, in minutes", fontdict = font2)
+				ax = gca()
+				ax[:tick_params]("both",labelsize=24) 
 			else
 				ax =gca()
 				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
+				ax = gca()
+				ax[:tick_params]("both",labelsize=24) 
 			end
+				ax = gca()
+				ax[:tick_params]("both",labelsize=24) 
 			counter=counter+1
 		end
 	end
@@ -644,6 +654,7 @@ function makeTrainingFigurePlatletContributionToROTEM(best_params, savestr_final
 	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
 
 	savefig(savestr_final)
+	return MSEs
 end
 
 function makePredictionFigurePlatletContributionToROTEM(best_params, savestr_final,savestr)
@@ -660,10 +671,12 @@ function makePredictionFigurePlatletContributionToROTEM(best_params, savestr_fin
 	counter = 1
 	numParamSets = size(best_params,1)
 	adjustICs=false
+	MSEs = zeros(4,2)
 	for j in collect(1:size(ids,1))
 		for k in collect(1:size(tPAs,1))
 			alldata, meanROTEM, stdROTEM,TSIM=testROTEMPredicitionGivenParamsPlatetContributionToROTEM(best_params, ids[j], tPAs[k], savestr,adjustICs)
 			platelets,expdata = setROTEMIC(tPAs[k], ids[j])
+			MSEs[j,k]=calculateMSE(TSIM, meanROTEM,  expdata)[1]
 			@show counter
 			@show norm(meanROTEM), norm(expdata[:,2])
 			curraxis=axarr[j,k]
@@ -684,10 +697,15 @@ function makePredictionFigurePlatletContributionToROTEM(best_params, savestr_fin
 			if(counter==7 || counter ==8)
 				figure(1)
 				#xlabel("Time, in minutes", fontdict = font2)
+				ax = gca()
+				ax[:tick_params]("both",labelsize=24) 
 			else
 				ax =gca()
 				ax[:xaxis][:set_ticklabels]([]) #remove tick labels if we're not at the bottom of a column
+				ax[:tick_params]("both",labelsize=24) 
 			end
+				ax = gca()
+				ax[:tick_params]("both",labelsize=24) 
 			counter=counter+1
 		end
 	end
@@ -712,6 +730,7 @@ function makePredictionFigurePlatletContributionToROTEM(best_params, savestr_fin
 	fig[:text](0.06, 0.5, "Ampltiude (mm)", ha="center", va="center", rotation="vertical",fontsize=40)
 
 	savefig(savestr_final)
+	return MSEs
 end
 
 function plotTrainValErr()

@@ -189,7 +189,7 @@ function runPSONewProb(seed,iter)
 	#genExp =temp_exp/stretchfactor+rand(size(temp_exp,1)).*(stretchfactor*temp_exp-temp_exp*1/stretchfactor)
 #	@show temp_platelets/stretchfactor, rand(size(temp_platelets,1))[1]
 	#genPlatelets =temp_platelets/stretchfactor+rand(size(temp_platelets,1))[1].*(stretchfactor*temp_platelets-temp_platelets*1/stretchfactor)
-	stretchfactorupper = 2.0 #for setting upper and lower bounds of our generated ROTEM curve
+	stretchfactorupper = 1.5 #for setting upper and lower bounds of our generated ROTEM curve
 	stretchfactorlower = .5	
 	genIC = sampleSpace(stretchfactorlower, stretchfactorupper, temp_IC)
 	genIC[7]=.005 #make trigger set
@@ -222,7 +222,7 @@ function runPSONewProb(seed,iter)
 
 
 	#Store our ICS to disk
-	writedlm(string("../solveInverseProb/solveDiffProb_fewerEvals/ics_to_match_19_03_19_iter",iter ,".txt"), hcat(genExp', genIC', genPlatelets), ',')
+	writedlm(string("../solveInverseProb/solveDiffProb_300Evals/ics_to_match_19_03_19_iter",iter ,".txt"), hcat(genExp', genIC', genPlatelets), ',')
 
 
 	target_CT = temp_target[1]
@@ -233,7 +233,7 @@ function runPSONewProb(seed,iter)
 	target_MaximumLysis = temp_target[5]
 	target_AUC = temp_target[6]
 	stats= hcat(target_CT, target_CFT, target_alpha, target_MCF, target_MaximumLysis, target_AUC)
-	writedlm(string("../solveInverseProb/solveDiffProb_fewerEvals/Metrics_to_match_19_03_19_iter",iter, ".txt"), stats)
+	writedlm(string("../solveInverseProb/solveDiffProb_300Evals/Metrics_to_match_19_03_19_iter",iter, ".txt"), stats)
 
 	#use the median as characteritic scaling
 	scale_CT = 6.7*60
@@ -266,16 +266,16 @@ function runPSONewProb(seed,iter)
 	x0 =vcat(genExp, genIC, genPlatelets)
 	@show x0
 	@show typeof(x0)
-	numFevals = 10
+	numFevals = 300
 	res=Optim.optimize(objective_six_metrics_weighted, lbs, ups,x0, ParticleSwarm(n_particles=40, lower=lbs, upper=ups), Optim.Options(iterations=numFevals))
 	@show res
 	@show summary(res)
 	
-	writedlm(string("../solveInverseProb/solveDiffProb_fewerEvals/foundIcs_19_03_19_", iter, ".txt"), Optim.minimizer(res))
-	writedlm(string("../solveInverseProb/solveDiffProb_fewerEvals/ObjVal_10_03_19_", iter, ".txt"), Optim.minimum(res))
+	writedlm(string("../solveInverseProb/solveDiffProb_300Evals/foundIcs_19_03_19_", iter, ".txt"), Optim.minimizer(res))
+	writedlm(string("../solveInverseProb/solveDiffProb_300Evals/ObjVal_19_03_19_", iter, ".txt"), Optim.minimum(res))
 end
 
-for j =1:10
+for j =1:20
 	runPSONewProb(j+2490,j)
 end
 

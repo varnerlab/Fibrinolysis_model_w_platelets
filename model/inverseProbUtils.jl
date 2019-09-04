@@ -142,6 +142,41 @@ function objective_five_metrics(params::Vector, grad::Vector)
 
 end
 
+function objective_UW(params::Vector, grad::Vector)
+	#print("here!")
+	curr_exp = params[1:8]
+	curr_ICs = params[9:end-1]
+	curr_platelets = params[end]
+	tPA = curr_ICs[12]
+	dilution_factor =  0.79
+	T,R=runModelWithParamsChangeICReturnA(kin_params,curr_ICs,curr_exp,curr_platelets)
+	#plot(T,R)
+	#CT,CFT,alpha,MCF,A10,A20,LI30,LI60
+	metrics = calculateCommonMetrics(R,T)
+	CT = metrics[1]
+	CFT = metrics[2]
+	alpha = metrics[3]
+	MCF = metrics[4]
+	LI30 = calculateLysisAtTime(R,T,30.0)
+	sel_metrics = [CT,CFT,alpha,MCF,LI30]
+	#@show sel_metrics
+	#if any of the metrics are negative, something went wrong, penalize our parameters
+	if(true in (metrics .<0)) #if any of our metrics are negative
+		calc_obj = 1E8
+	else
+		sum = 0.0
+		#use MSE to determine how far away we are from hitting our target
+		for j in 1:maximum(size(sel_metrics))
+			sum = sum+(sel_metrics[j]/sel_scales[j]-sel_target[j]/sel_scales[j])^2*weights[j]
+		end
+		#@show params
+		calc_obj = sqrt(sum)
+	end
+	#@show calc_obj
+	return calc_obj
+	
+end
+
 function objective_five_metrics_weighted(params::Vector, grad::Vector)
 	curr_exp = params[1:7]
 	curr_ICs = params[8:end-1]
@@ -279,7 +314,7 @@ function plotAllCurveSameProb()
 	plot(T,R, "k", linewidth=2)
 	
 	numSims = 1
-	solved=[collect(1:6);collect(201:206)]
+	solved=[collect(1:19);collect(201:206)]
 	allCurves = zeros(size(solved,1), size(R,1))
 	count = 1
 	for k in solved
@@ -308,17 +343,21 @@ function plotAllCurveSameProb()
 	savefig("../figures/solvingSameProbSameCurves_13_03_19.pdf")
 end
 
-function analyzeDiffICs(startIdx, endIdx)
+function analyzeDiffICs(solvedIdxs)
 	close("all")
-	trueICStr = "../solveInverseProb/solveDiffProb/ics_to_match_18_03_19_iter"
-	foundICStr ="../solveInverseProb/solveDiffProb/foundIcs_18_03_19_"
-	global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
+	trueICStr = "../solveInverseProb/solveDiffProb_200Evals/ics_to_match_19_03_19_iter"
+	foundICStr ="../solveInverseProb/solveDiffProb_200Evals/foundIcs_19_03_19_"
+	allp = readdlm("../LOOCV/bestparamsForBatch_10_14_02_19.txt")
+	#global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
+	kin_params=mean(allp, dims=1)
 	d = buildCompleteDictFromOneVector(kin_params)
 	nominal_ICs = d["INITIAL_CONDITION_VECTOR"]
 	#nominal_ICs=[1106.0, 0.0, 60.0, 0.0, 2686.0, 0.79, 3.95, 0.0, 0.0, 7900.0, 971.7, 1.58, 0.0, 0.0, 0.0, 932.2, 0.4424, 0.0]
 	#nominal_experimental=[1.975,15.8,0.553,71.1,134.3,73.47,70.0]
 	nominal_experimental = d["FACTOR_LEVEL_VECTOR"]
 	platelets = d["PLATELET_PARAMS"][5]
+	#add some tPA
+	nominal_ICs[16]=.073
 
 	@show size(nominal_experimental), size(nominal_ICs), size(platelets)
 
@@ -328,17 +367,20 @@ function analyzeDiffICs(startIdx, endIdx)
 
 	exp_condition_names = ["TFPI", "FV", "FVIII", "FIX", "FX", "FXIII", "TAFI", "FXIII"]
 	IC_names =["FII", "FIIa", "PC", "APC", "ATIII", "TM", "TRIGGER","Fraction of Platelets Activated", "FV+FX", "FV+FXa","Prothrombinase Complex", "Fibrin","Plasmin","Fibrinogen", "Plasminogen", "tPA", "uPA", "Fibrin \n monomer", "Protofibril", "antiplasmin", "PAI_1", "Fiber"]
-	selidxs = [1,2,3,4,5,6,7,8,9,11,13,14,16,17,20,21,22,23]
+	selidxs = [1,3,4,6,7,8,9,11,13,14,17,22,23,24]
 	allnames = vcat(exp_condition_names, IC_names)
+	@show allnames[selidxs]
 	numparams = maximum(size(allnames))
 #	data = Array{Any,numparams}
 #	
 #	for j = 1:numparams
 #		data[j] = []
 #	end
-	data = zeros(size(selidxs,1), maximum(size(startIdx:endIdx)))
+	data = zeros(size(selidxs,1), maximum(size(solvedIdxs)))
+	@show size(data)
 
-	for j = startIdx:endIdx
+	itercount = 1
+	for j in solvedIdxs
 		currFound = readdlm(string(foundICStr, j, ".txt"))
 		currGiven = readdlm(string(trueICStr, j, ".txt"),',')
 		@show currFound
@@ -347,9 +389,10 @@ function analyzeDiffICs(startIdx, endIdx)
 		for k in selidxs
 			#@show currFound[k]
 			#@show currGiven[k]
-			data[count,j]=((currFound[count]/all_nominal[selidxs[count]]-currGiven[count]/all_nominal[selidxs[count]])^2)^.5
+			data[count,itercount]=((currFound[k]/all_nominal[k]-currGiven[k]/all_nominal[k])^2)^.5
 			count = count+1
 		end
+		itercount = itercount+1
 	end
 	@show data, size(data)
 	meandata =mean(data,dims=1)
@@ -360,15 +403,16 @@ function analyzeDiffICs(startIdx, endIdx)
 
 	figure(figsize = (20,15))
 	#@show size(data[1])
-	numSamples = size(data[1],1)
+	numSamples = size(data,2)
 	@show data
 	#boxplot(data[selidxs]*100, "k")
 	positions = collect(1:maximum(size(selidxs)))
-	@show typeof(positions)
-	@show typeof(mean(meandata,2)*100)
-	@show numSamples
 	#errorbars will be std error of the mean
-	bar(positions, squeeze(mean(meandata,dims=2),2)*100, yerr = squeeze(std(meandata,dims=2),2)*100/sqrt(numSamples),color = "lightblue")
+	std_err=vec(std(data,dims=2)*100/sqrt(numSamples))
+	@show size(positions)
+	@show size(std_err)
+	@show size(vec(mean(data,dims=2)*100))
+	bar(positions, vec(mean(data,dims=2)*100), yerr = std_err,color = "lightblue")
 	ax = gca()
 	#ax[:set_yscale]("log")
 	ax[:xaxis][:set_ticks](positions)
@@ -379,7 +423,7 @@ function analyzeDiffICs(startIdx, endIdx)
 	axis("tight")
 	#@show size(positions), size(vec(trueICs))
 	ax = gca()
-	ax[:set_ylim]([0,50])
+	ax[:set_ylim]([0,150])
 	ylabel("Initial Concentration\n (% difference of nominal)", fontsize = 36)
-	savefig("figs/DiffInICSolvingDiffProb_05_09_18.pdf",bbox_inches="tight")
+	savefig("../figures/DiffInICSolvingDiffProb_19_03_19.pdf",bbox_inches="tight")
 end
