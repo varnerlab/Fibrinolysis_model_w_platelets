@@ -177,6 +177,41 @@ function objective_UW(params::Vector, grad::Vector)
 	
 end
 
+function objective_UW(params::Array)
+	#print("here!")
+	curr_exp = params[1:8]
+	curr_ICs = params[9:end-1]
+	curr_platelets = params[end]
+	tPA = curr_ICs[12]
+	dilution_factor =  0.79
+	T,R=runModelWithParamsChangeICReturnA(kin_params,curr_ICs,curr_exp,curr_platelets)
+	#plot(T,R)
+	#CT,CFT,alpha,MCF,A10,A20,LI30,LI60
+	metrics = calculateCommonMetrics(R,T)
+	CT = metrics[1]
+	CFT = metrics[2]
+	alpha = metrics[3]
+	MCF = metrics[4]
+	LI30 = calculateLysisAtTime(R,T,30.0)
+	sel_metrics = [CT,CFT,alpha,MCF,LI30]
+	#@show sel_metrics
+	#if any of the metrics are negative, something went wrong, penalize our parameters
+	if(true in (metrics .<0)) #if any of our metrics are negative
+		calc_obj = 1E8
+	else
+		sum = 0.0
+		#use MSE to determine how far away we are from hitting our target
+		for j in 1:maximum(size(sel_metrics))
+			sum = sum+(sel_metrics[j]/sel_scales[j]-sel_target[j]/sel_scales[j])^2*weights[j]
+		end
+		#@show params
+		calc_obj = sqrt(sum)
+	end
+	#@show calc_obj
+	return calc_obj
+	
+end
+
 function objective_five_metrics_weighted(params::Vector, grad::Vector)
 	curr_exp = params[1:7]
 	curr_ICs = params[8:end-1]
