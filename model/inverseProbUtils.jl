@@ -7,6 +7,15 @@ using Distributions
 
 include("runModel.jl")
 
+function convertFibrinogenTonM(fibrinogen_in_mg_dl::Real)
+	mw_fibrinogen = 340.0 #kDa
+	kilodaltons_in_a_mg =  6.0221366516752E17
+	deci_liters_per_liter =10.0
+	NA = 6.0221409e23 #avagadro's constant'
+	conv_fibrinogen = fibrinogen_in_mg_dl*1/mw_fibrinogen*kilodaltons_in_a_mg*deci_liters_per_liter*1/NA*10^9
+	return conv_fibrinogen
+end
+
 function sampleSpace(lower,upper,cond)
 	res = zeros(1)
 	if(size(cond,1)==1)
@@ -148,8 +157,7 @@ function objective_UW(params::Vector, grad::Vector)
 	curr_ICs = params[9:end-1]
 	curr_platelets = params[end]
 	tPA = curr_ICs[12]
-	dilution_factor =  0.79
-	T,R=runModelWithParamsChangeICReturnA(kin_params,curr_ICs,curr_exp,curr_platelets)
+	T,R= runModelWithParamsChangeICReturnA_UWRescaled(kin_params,curr_ICs,curr_exp,curr_platelets)
 	#plot(T,R)
 	#CT,CFT,alpha,MCF,A10,A20,LI30,LI60
 	metrics = calculateCommonMetrics(R,T)
@@ -184,7 +192,7 @@ function objective_UW(params::Array)
 	curr_platelets = params[end]
 	tPA = curr_ICs[12]
 	dilution_factor =  0.79
-	T,R=runModelWithParamsChangeICReturnA(kin_params,curr_ICs,curr_exp,curr_platelets)
+	T,R= runModelWithParamsChangeICReturnA_UWRescaled(kin_params,curr_ICs,curr_exp,curr_platelets)
 	#plot(T,R)
 	#CT,CFT,alpha,MCF,A10,A20,LI30,LI60
 	metrics = calculateCommonMetrics(R,T)
@@ -208,6 +216,43 @@ function objective_UW(params::Array)
 		calc_obj = sqrt(sum)
 	end
 	#@show calc_obj
+	return calc_obj
+	
+end
+
+function objective_UW_iterative(params::Array)
+	#print("here!")
+	curr_exp = params[1:8]
+	curr_ICs = params[9:end-1]
+	curr_platelets = params[end]
+	tPA = curr_ICs[12]
+	dilution_factor =  0.79
+	T,R= runModelWithParamsChangeICReturnA_UWRescaled(kin_params,curr_ICs,curr_exp,curr_platelets)
+	#plot(T,R)
+	#CT,CFT,alpha,MCF,A10,A20,LI30,LI60
+	metrics = calculateCommonMetrics(R,T)
+	CT = metrics[1]
+	CFT = metrics[2]
+	alpha = metrics[3]
+	MCF = metrics[4]
+	LI30 = calculateLysisAtTime(R,T,30.0)
+	sel_metrics = [MCF,CFT,CT,alpha,LI30]
+	#@show sel_metrics[1:metric_number]
+	#@show sel_metrics
+	#if any of the metrics are negative, something went wrong, penalize our parameters
+	if(true in (metrics .<0)) #if any of our metrics are negative
+		calc_obj = 1E8
+	else
+		sum = 0.0
+		#use MSE to determine how far away we are from hitting our target
+		for j in 1:metric_number
+			sum = sum+(sel_metrics[j]/sel_scales[j]-sel_target[j]/sel_scales[j])^2*weights[j]
+		end
+		#@show params
+		calc_obj = sqrt(sum)
+	end
+	#@show curr_ICs
+	#@show sel_metrics[1:metric_number],calc_obj
 	return calc_obj
 	
 end

@@ -634,6 +634,33 @@ function runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
 	return t,A
 end
 
+function runModelWithParamsChangeICReturnA_UWRescaled(params,genIC,genExp,genPlatelets)
+	TSTART = 0.0
+	Ts = .02
+	TSTOP=60.0
+	TSIM = collect(TSTART:Ts:TSTOP)
+	#curr_platelets,usefulROTEMdata = setROTEMIC(tPA,"5")
+	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
+	#pathToData = "../data/Buentas1999Fig4100PercentProthrombin.txt"
+	#use default platelets	
+	#params[47]=curr_platelets
+	modelparams = params[1:77]
+	curr_platelets=genPlatelets
+	initial_condition_vector=genIC
+	dict = buildCompleteDictFromOneVector(modelparams)
+	tPA = genIC[16]
+	dict["FACTOR_LEVEL_VECTOR"]=genExp
+	TSIM = collect(TSTART:Ts:TSTOP)
+	fbalances(y,p,t)= Balances(t,y,dict) 
+	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+	sol = solve(prob, alg_hints=[:stiff] , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-4, force_dtmin=true, saveat = .1,maxiters = 1e6)
+	t =sol.t
+	X = sol
+	#A = convertToROTEM(t,X,tPA)
+	A = convertToROTEMPlateletContribution_UWRescaled(t,X,tPA,curr_platelets)
+	return t,A
+end
+
 function runModelWithParamsChangeICReturnA(params)
 	TSTART = 0.0
 	Ts = .02

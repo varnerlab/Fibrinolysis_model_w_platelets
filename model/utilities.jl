@@ -623,6 +623,58 @@ end
 	return A
 end
 
+function convertToROTEMPlateletContribution_UWRescaled(t,x,tPA,platelet_count)
+#to work with Differential Equations
+	#@show typeof(x)
+	if(occursin("DiffEq",string(typeof(x))))
+		F = x[12,:]+x[18,:]+ x[19,:]+x[22,:]
+	else
+		F = [a[12] for a in x]+ [a[18] for a in x]+ [a[19] for a in x]+ [a[22] for a in x] # fibrin related species 12,18,19,22
+	end
+	normal_platelet_count = 300 #*10^6 #/mL
+	A0 = fill(.01, size(F)) #baseline ROTEM signal
+	#K = 2000-375*tPA
+	#K = 2000-200*tPA
+	#K = 5000-375*tPA#-use me on Monday to check predictions
+	#K = 5000-1000*tPA
+	#K = 2000+1125*tPA
+	K = fill(1000+100*tPA, size(F))
+	#K = 1
+	n = 2
+	#for infomration about weights
+	#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4568902/ Assessing the Methodology for Calculating Platelet Contribution to Clot Strength (Platelet Component) in Thromboelastometry and Thrombelastography
+	#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4238905/ FIBRINOGEN AND PLATELET CONTRIBUTIONS TO CLOT FORMATION: IMPLICATIONS FOR TRAUMA RESUSCITATION AND THROMBOPROPHYLAXIS
+
+	wp = .5 #platelet contribution
+	wf = .5 #fibrin related species contribution
+	#using maximum rTEG MA as S
+	if(tPA ==2)
+		S=82.6
+		#S = 60
+		#S = 3.5
+	else
+		S = 82.6
+		#S = 60
+		#S = 1.5
+	end
+	A1 = fill(S, size(F))
+	if(occursin("DiffEq", string(typeof(x))))
+		#print("here!")
+		P=platelet_count/normal_platelet_count.*vec(x[8,:]).*vec(x[12,:])
+	else
+		P=platelet_count/normal_platelet_count.*[a[8] for a in x].*[a[12] for a in x]
+	end
+#	figure()
+#	plot(t,wf.*F, "r")
+#	plot(t, wp.*P, "g")
+#	legend(["Fibrin contribution", "Polymerized Platelet Contribution"])
+	#x[8]-fraction activated platelets
+	R = wf.*F+wp.*P
+	A = A0+A1.*R.^n./(K.^n+R.^n)
+	return A
+
+end
+
  function convertToROTEMPlateletContributionScaledF(t,x, tPA,platelet_count,F0)
 	#to work with Differential Equations
 	if(contains(string(typeof(x)), "DiffEqBase"))
