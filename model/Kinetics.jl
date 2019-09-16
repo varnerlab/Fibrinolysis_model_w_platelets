@@ -39,7 +39,7 @@ function Kinetics(t,x,PROBLEM_DICTIONARY)
 	fibrin_kinetic_parameter_vector = PROBLEM_DICTIONARY["FIBRIN_KINETIC_PARAMETER_VECTOR"]
 	fibrin_control_vector = PROBLEM_DICTIONARY["FIBRIN_CONTROL_PARAMETER_VECTOR"]
 
-	# Alias the qualitative factors -
+	# Alias the qualitative factors 
 	TFPI = qualitative_factor_level_vector[1]
 	#FV = qualitative_factor_level_vector[2]
 	FVIII = qualitative_factor_level_vector[3]
