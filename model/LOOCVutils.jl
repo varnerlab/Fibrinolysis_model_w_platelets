@@ -57,7 +57,7 @@ end
 
 # Generates new parameter array, given current array -
 function neighbor_function(parameter_array)
-	outputfile="parameterEstimation/POETS_28_03_2017.txt"
+	#outputfile="parameterEstimation/POETS_28_03_2017.txt"
 	#@show size(parameter_array)
 #	f = open(outputfile, "a")
 #	write(f,string(parameter_array, "\n"))
@@ -91,7 +91,7 @@ function cooling_function(temperature)
 
   # define my new temperature -
   alpha = 0.9
-	@show temperature
+	#@show temperature
   return alpha*temperature
 end
 

@@ -121,7 +121,7 @@ function attemptOptimization_UW()
 	number_of_subdivisions = 10
 	number_of_parameters = 77
 	number_of_objectives = 6
-	outputfile = "../parameterEstimation/POETS_info_13_09_19_PlateletContributionToROTEM_UW_Scaled.txt"
+	outputfile = "../parameterEstimation/POETS_info_16_09_19_PlateletContributionToROTEM_UW_Scaled.txt"
 	ec_array = zeros(number_of_objectives)
 	pc_array = zeros(number_of_parameters)
 	allp = readdlm("../LOOCV/bestparamsForBatch_10_14_02_19.txt")
@@ -133,7 +133,16 @@ function attemptOptimization_UW()
 	for index in collect(1:number_of_subdivisions)
 
 		# Grab a starting point -
-		initial_parameter_estimate =initial_parameter_estimate+initial_parameter_estimate*rand()*.1
+		if(index==1)
+			initial_parameter_estimate =initial_parameter_estimate+initial_parameter_estimate*rand()*.1
+		else
+			#use results from previous round to start
+			sum_errs = sum(EC, dims=1)
+			min_idx =  findmin(sum_errs)[2][2] #weird indexing because it returns a cartesian idx
+			bestParams = PC[:, min_idx]
+			initial_parameter_estimate = bestParams
+
+		end
 
 		# Run JuPOETs -
 		(EC,PC,RA) = estimate_ensemble(objectiveUWHour0,neighbor_function,acceptance_probability_function,cooling_function,initial_parameter_estimate;rank_cutoff=4,maximum_number_of_iterations=10,show_trace=true)
