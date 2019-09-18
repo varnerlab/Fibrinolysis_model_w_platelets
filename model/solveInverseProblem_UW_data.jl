@@ -112,7 +112,8 @@ end
 function poseInverseProblem(patient_number::Int, hour::Int)
 	rel_dat = getPatientData(patient_number, hour)
 	# Load data -
-	allp = readdlm("../LOOCV/bestparamsForBatch_10_14_02_19.txt")
+	#allp = readdlm("../LOOCV/bestparamsForBatch_10_14_02_19.txt")
+	allp = readdlm("../parameterEstimation/Best24_UW_Rescaled_16_09_19.txt")
 	global kin_params=mean(allp, dims=1)
 	@show size(kin_params)
 	d = buildCompleteDictFromOneVector(kin_params)
@@ -313,7 +314,8 @@ end
 function poseInverseProblemPSO(patient_number::Int, hour::Int)
 	rel_dat = getPatientData(patient_number, hour)
 	# Load data -
-	allp = readdlm("../LOOCV/bestparamsForBatch_10_14_02_19.txt")
+	#allp = readdlm("../LOOCV/bestparamsForBatch_10_14_02_19.txt")
+	allp = readdlm("../parameterEstimation/Best24_UW_Rescaled_16_09_19.txt")
 	global kin_params=mean(allp, dims=1)
 	@show size(kin_params)
 	d = buildCompleteDictFromOneVector(kin_params)
@@ -350,8 +352,8 @@ function poseInverseProblemPSO(patient_number::Int, hour::Int)
 	scale_MaxLysis = .12
 	scale_AUC = 250.0
 
-	#global sel_scales = [scale_CT, scale_MCF, scale_alpha, scale_MCF, scale_MaxLysis]
-	global sel_scales = ones(1,5)
+	global sel_scales = [scale_CT, scale_MCF, scale_alpha, scale_MCF, scale_MaxLysis]
+	#global sel_scales = ones(1,5)
 
 	#set target-change here
 
@@ -359,19 +361,19 @@ function poseInverseProblemPSO(patient_number::Int, hour::Int)
 
 	global sel_target = [target_CT, target_CFT, target_alpha, target_MCF,target_LI30]
 	@show sel_target
-	global weights = [1,1,1.0,100.0,1] 
+	global weights = [1,1,1.0,1.0,1] 
 	#run optimization
 	
 	#use nominal ICs as initial guess
 	initial_guess = vec(vcat(nominal_experimental,nominal_ICs, platelets))
-	results= Optim.optimize(objective_UW, initial_guess, ParticleSwarm(lower = lbs, upper = ups, n_particles = 100), Optim.Options( show_trace = true, show_every = 1, time_limit = 15*60))	
+	results= Optim.optimize(objective_UW, initial_guess, ParticleSwarm(lower = lbs, upper = ups, n_particles = 100), Optim.Options( show_trace = true, show_every = 1, time_limit = 60*60))	
 	@show results
-	writedlm(string("../solveInverseProb/UW/foundIcs_13_09_19_", "solvingPatient", patient_number, "Hour", hour, ".txt"), results.minimizer)
-	writedlm(string("../solveInverseProb/UW/CompletePSOResults_13_09_19_", "solvingPatient", patient_number, "Hour", hour, ".txt"), replace(string(results), "\n"=> ""))
+	writedlm(string("../solveInverseProb/UW/foundIcs_17_09_19_", "solvingPatient", patient_number, "Hour", hour, ".txt"), results.minimizer)
+	writedlm(string("../solveInverseProb/UW/CompletePSOResults_17_09_19_", "solvingPatient", patient_number, "Hour", hour, ".txt"), replace(string(results), "\n"=> ""))
 	#store and print our estimates
-	output_fn = string("../solveInverseProb/UW/Acc_13_09_19_comparisonPSOPatient", patient_number, "Hour", hour, ".txt")
+	output_fn = string("../solveInverseProb/UW/Acc_17_09_19_comparisonPSOPatient", patient_number, "Hour", hour, ".txt")
 	compareEstimateToReal(nominal_ICs, results.minimizer, rel_dat, output_fn)
-	output_fn_metrics = string("../solveInverseProb/UW/PSOeMetrics_13_09_19_comparisonPatient", patient_number, "Hour", hour, ".txt")
+	output_fn_metrics = string("../solveInverseProb/UW/PSOeMetrics_17_09_19_comparisonPatient", patient_number, "Hour", hour, ".txt")
 	compareMetricsToReal(results.minimizer, sel_target, output_fn_metrics)		
 end
 
