@@ -16,6 +16,15 @@ function convertFibrinogenTonM(fibrinogen_in_mg_dl::Real)
 	return conv_fibrinogen
 end
 
+function sampleTimeDelay_UW_R()
+	mu = 1.66 #minutes
+	sigma = 5.87
+	#use truncated normal to prevent negative time delays
+	d =Truncated(Normal(mu, sigma), 0, 1000)
+	delay = rand(d, 1)[1]
+	return delay 
+end
+
 function sampleSpace(lower,upper,cond)
 	res = zeros(1)
 	if(size(cond,1)==1)
