@@ -106,14 +106,16 @@ end
 
  function generateBestNparameters(n, ec_array, pc_array)
 	#calculate error
-	best_params = Array[]
-	total_error = sum(ec_array[:,1:end],1)
+	best_params = zeros(n, size(pc_array)[1])
+	total_error = sum(ec_array[:,1:end],dims=1)
 	total_error= vec(total_error)
 	for k in collect(1:n)
-		min_index = indmin(total_error)
+		#min_index = indmin(total_error)
+		min_index = argmin(total_error)
 		curr_best_params = pc_array[:,min_index]
 		@show size(curr_best_params)
-		push!(best_params, curr_best_params)
+		#push!(best_params, curr_best_params)
+		best_params[k,:]=curr_best_params
 		@show min_index
 		@show curr_best_params
 		#delete the best ones we've found
@@ -124,7 +126,8 @@ end
 		@show size(pc_array)
 		@show size(total_error)
 	end
-	writedlm(string("../parameterEstimation/Best", n, "OverallParameters_29_04_2018.txt"), best_params)
+	#writedlm(string("../parameterEstimation/Best", n, "OverallParameters_29_04_2018.txt"), best_params)
+	@show size(best_params)
 	return best_params
 
 end

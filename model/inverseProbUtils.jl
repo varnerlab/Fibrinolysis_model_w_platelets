@@ -16,9 +16,36 @@ function convertFibrinogenTonM(fibrinogen_in_mg_dl::Real)
 	return conv_fibrinogen
 end
 
+function convertPAIToM(PAI1_in_ng_ml::Real)
+	mw_PAI1 = 43.0 #kDA
+	kilodaltons_in_a_mg =  6.0221366516752E17
+	milli_liters_per_liter =1000.0
+	NA = 6.0221409e23 #avagadro's constant'
+	conv_PAI1 =PAI1_in_ng_ml*1E-6*1/mw_PAI1*kilodaltons_in_a_mg*milli_liters_per_liter*1/NA*10^9
+	return conv_PAI1
+end
+
+function convertTAFIToM(TAFI_in_ng_ml::Real)
+	mw_TAFI = 60 #kDA
+	kilodaltons_in_a_mg =  6.0221366516752E17
+	milli_liters_per_liter =1000.0
+	NA = 6.0221409e23 #avagadro's constant'
+	conv_TAFI =TAFI_in_ng_ml*1E-6*1/mw_TAFI*kilodaltons_in_a_mg*milli_liters_per_liter*1/NA*10^9
+	return conv_TAFI
+end
+
+function convertTFPIToM(TFPI_in_ng_ml::Real)
+	mw_TFPI = 32 #kDA
+	kilodaltons_in_a_mg =  6.0221366516752E17
+	milli_liters_per_liter =1000.0
+	NA = 6.0221409e23 #avagadro's constant'
+	conv_TFPI =TFPI_in_ng_ml*1E-6*1/mw_TFPI*kilodaltons_in_a_mg*milli_liters_per_liter*1/NA*10^9
+	return conv_TFPI
+end
+
 function sampleTimeDelay_UW_R()
 	mu = 1.66 #minutes
-	sigma = 5.87
+	sigma = sqrt(sqrt(5.87))
 	#use truncated normal to prevent negative time delays
 	d =Truncated(Normal(mu, sigma), 0, 1000)
 	delay = rand(d, 1)[1]
@@ -159,6 +186,61 @@ function objective_five_metrics(params::Vector, grad::Vector)
 	return calc_obj
 
 end
+
+function objective_UW_moreComplete(params::Array)
+	#print("here!")
+	#@show params
+	curr_exp = params[1:8]
+	curr_ICs = params[9:end-1]
+	curr_platelets = params[end]
+	tPA = curr_ICs[12]
+	TFPI = curr_ICs[13]
+	TAFI = curr_ICs[14]
+	dict = buildCompleteDictFromOneVector(kin_params)
+	dict["FACTOR_LEVEL_VECTOR"][1]=TFPI
+	dict["FACTOR_LEVEL_VECTOR"][7]=TAFI
+	TSTART = 0.0
+	TSTOP = 60.0
+	step = .1
+	initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
+	#update our time delay
+	est_delay =sampleTimeDelay_UW_R()
+	dict["TIME_DELAY"][1]=est_delay
+	fbalances(y,p,t)= Balances(t,y,dict) 
+	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+	sol = solve(prob, alg_hints=[:stiff] , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-4, force_dtmin=true, saveat = step,maxiters = 1e6)
+	t =sol.t
+	X = sol
+	#A = convertToROTEM(t,X,tPA)
+	tPA = initial_condition_vector[16]
+	A = convertToROTEMPlateletContribution_UWRescaled(t,X,tPA,curr_platelets)
+	#plot(T,R)
+	#CT,CFT,alpha,MCF,A10,A20,LI30,LI60
+	metrics = calculateCommonMetrics(A,t)
+	CT = metrics[1]
+	CFT = metrics[2]
+	alpha = metrics[3]
+	MCF = metrics[4]
+	LI30 = calculateLysisAtTime(A,t,30.0)
+	sel_metrics = [CT,CFT,alpha,MCF,LI30]
+	#@show sel_metrics
+	#if any of the metrics are negative, something went wrong, penalize our parameters
+	if(true in (metrics .<0)) #if any of our metrics are negative
+		calc_obj = 1E8
+	else
+		sum = 0.0
+		#use MSE to determine how far away we are from hitting our target
+		for j in 1:maximum(size(sel_metrics))
+			sum = sum+(sel_metrics[j]/sel_scales[j]-sel_target[j]/sel_scales[j])^2*weights[j]
+		end
+		#@show params
+		calc_obj = sqrt(sum)
+	end
+	#@show calc_obj
+	return calc_obj
+	
+end
+
 
 function objective_UW(params::Vector, grad::Vector)
 	#print("here!")
