@@ -169,9 +169,9 @@ function findLargestIDableSubset()
 	#transpose, so that each parameter gets a column
 	S_useful = transpose(S_useful)
 	S_columwise = transpose(S)
-	I_2 = collect(permuations(sensitive_idxs))
+	I_2 = collect(permutations(sensitive_idxs,2))
 
-		CI_star = 20 #threshold which they chose as
+	CI_star = 20 #threshold which they chose as
 #	CIK < 20. Roughly speaking, a value of 20 means that 95%
 #	of the variation in the model output caused by changing
 #	one of the parameters in the subset can be compensated
@@ -179,10 +179,37 @@ function findLargestIDableSubset()
 
 	useful_sets = []
 	for item in I_2
-		CI_2i = calculateColinarity(S[item,:])
+		#@show item
+		CI_2i = calculateColinarity(transpose(S[item,:]))
 		if(CI_2i< CI_star)
 			push!(useful_sets, item)
 		end
+	end
+	prev_useful_sets = useful_sets
+	for j in 3:length(sensitive_idxs)
+		poss_combos = collect(permutations(sensitive_idxs,j))
+		useful_combos = []
+		useful_colins = []
+		for p in poss_combos
+			if(p[1:j-1] in useful_sets)
+				push!(useful_combos, p) #find the extension set
+				push!(useful_colins, calculateColinarity(transpose(S[p, :]))) #calculate colinarity
+			end
+		end
+		@show j, size(useful_combos)
+
+		useful_sets = []
+		for j in size(useful_colins)[1]
+			@show useful_colins[j]
+			if(useful_colins[j]<CI_star)
+				push!(useful_sets, useful_combos[j])
+			end
+		end
+		@show useful_sets
+		if(size(useful_sets)[1]==0)
+			return indexLargestIDSet = sensitive_idxs[prev_useful_sets]
+		end
+		prev_useful_sets = useful_sets
 	end
 	
 end
