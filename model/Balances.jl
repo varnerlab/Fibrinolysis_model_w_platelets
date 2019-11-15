@@ -57,7 +57,7 @@ function Balances(t,x,data_dictionary)
 	time_coeff = timing[2]
 	aleph = data_dictionary["ALEPH"]
 
-	#@show FIIa, aleph, time_coeff
+	#@show t, FIIa, aleph, time_coeff
 	tau = time_coeff*(1-FIIa/aleph)
 	time_scale =1-1*exp(-tau*(t-time_delay))
 	#@show tau, time_scale

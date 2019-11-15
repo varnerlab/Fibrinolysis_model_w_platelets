@@ -4,6 +4,7 @@ using DelimitedFiles
 using Statistics
 using Random
 using Distributions
+using CSV
 
 include("runModel.jl")
 
@@ -123,6 +124,57 @@ function testIfPhysical(params,genIC,genExp,genPlatelets)
 	return isPhysical, temp_target
 end
 
+function testIfPhysicalReturnTrajectory(params,genIC,genExp,genPlatelets)
+	T,R=runModelWithParamsChangeICReturnA(params,genIC,genExp,genPlatelets)
+	#plot(T,R)
+	#check to make sure solver finished
+	if(T[end]<59)
+		println("Didn't finish solving")
+		isPhysical=false
+		return isPhysical
+	end
+
+	#describe the curve we've created'
+	metrics = calculateCommonMetrics(R,T)
+	target_CT = metrics[1]
+	target_CFT = metrics[2]
+	target_alpha = metrics[3]
+	target_MCF = metrics[4]
+	#experiment run for 120 mins =2 hours
+	target_MaximumLysis = calculateLysisAtTime(R,T,60.0)
+	target_LI30 = calculateLysisAtTime(R,T,30.0)
+	target_AUC = calculateAUC(R,T)
+
+
+	temp_target=[target_CT, target_CFT, target_alpha, target_MCF,target_MaximumLysis, target_AUC, target_LI30]
+	@show temp_target
+	if(true in (temp_target .<0))
+		isPhysical = false
+	else
+		isPhysical = true
+	end
+	#based on ""Normal range values for thromboelastography in healthy adult volunteers""
+	#want MCF between 50 and 70
+	#MA = MCF
+	#R = CT
+	#K = CFT
+	#if(target_MCF<49.7 || target_MCF>72.7)
+	if(target_MCF<40.0 || target_MCF>72.7) #looser contstraints
+		isPhysical=false
+	end
+	if(target_CT<3.8*60  || target_CT>9.8*60)
+		isPhysical=false
+	end
+	if(target_CFT<.7*60  || target_CFT>3.4*60)
+		isPhysical=false
+	end
+#	if(target_alpha<47.8  || target_CFT>77.7)
+#		isPhysical=false
+#	end
+
+	return isPhysical, temp_target, R
+end
+
 function objective_f(params::Vector, grad::Vector)
 	curr_exp = params[1:7]
 	curr_ICs = params[8:end-1]
@@ -149,6 +201,19 @@ function objective_f(params::Vector, grad::Vector)
 	@show calc_obj
 	return calc_obj
 
+end
+
+function objective_MSE(params)
+	curr_exp = params[1:8]
+	curr_ICs = params[9:end-1]
+	curr_platelets = params[end]
+	tPA = curr_ICs[12]
+	T,R =runModelWithParamsChangeICReturnA(kin_params,curr_ICs,curr_exp,curr_platelets)
+	sum = 0
+	for j in 1:length(R)
+		sum = sum+(R_to_match[j]-R[j])^2
+	end
+	return sum/length(R)
 end
 
 function objective_five_metrics(params::Vector, grad::Vector)
@@ -185,6 +250,42 @@ function objective_five_metrics(params::Vector, grad::Vector)
 	#@show calc_obj
 	return calc_obj
 
+end
+
+function objective_MSE_moreComplete(params)
+	#@show params
+	curr_exp = params[1:8]
+	curr_ICs = params[9:end-1]
+	curr_platelets = params[end]
+	tPA = curr_ICs[12]
+	TFPI = curr_ICs[13]
+	TAFI = curr_ICs[14]
+	dict = buildCompleteDictFromOneVector(kin_params)
+	dict["FACTOR_LEVEL_VECTOR"][1]=TFPI
+	dict["FACTOR_LEVEL_VECTOR"][7]=TAFI
+	TSTART = 0.0
+	TSTOP = 60.0
+	step = .1
+	initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
+	#update our time delay
+	est_delay =sampleTimeDelay_UW_R()
+	dict["TIME_DELAY"][1]=est_delay
+	fbalances(y,p,t)= Balances(t,y,dict) 
+	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
+	sol = solve(prob, alg_hints=[:stiff] , dt = 2.0, dtmax = 1.0, abstol = 1E-6, reltol = 1E-4, force_dtmin=true, saveat = step,maxiters = 1e6)
+	t =sol.t
+	X = sol
+	#A = convertToROTEM(t,X,tPA)
+	tPA = initial_condition_vector[16]
+	A = convertToROTEMPlateletContribution_UWRescaled(t,X,tPA,curr_platelets)
+	sum = 0
+#	@show length(A)
+#	@show length(R_to_match)
+	#plot(t, A)
+	for j in 1:length(R_to_match)
+		sum = sum+(R_to_match[j]-A[j])^2
+	end
+	return sum/length(R_to_match)
 end
 
 function objective_UW_moreComplete(params::Array)
@@ -516,8 +617,10 @@ end
 
 function analyzeDiffICs(solvedIdxs)
 	close("all")
-	trueICStr = "../solveInverseProb/solveDiffProb_200Evals/ics_to_match_19_03_19_iter"
-	foundICStr ="../solveInverseProb/solveDiffProb_200Evals/foundIcs_19_03_19_"
+	#trueICStr = "../solveInverseProb/solveDiffProb_200Evals/ics_to_match_19_03_19_iter"
+	#foundICStr ="../solveInverseProb/solveDiffProb_200Evals/foundIcs_19_03_19_"
+	trueICStr = "../solveInverseProb/solveDiffProb_300Evals/ics_to_match_23_10_19_iter"
+	foundICStr = "../solveInverseProb/solveDiffProb_300Evals/foundIcs_23_10_19_"
 	allp = readdlm("../LOOCV/bestparamsForBatch_10_14_02_19.txt")
 	#global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
 	kin_params=mean(allp, dims=1)
@@ -596,5 +699,81 @@ function analyzeDiffICs(solvedIdxs)
 	ax = gca()
 	ax[:set_ylim]([0,150])
 	ylabel("Initial Concentration\n (% difference of nominal)", fontsize = 36)
-	savefig("../figures/DiffInICSolvingDiffProb_19_03_19.pdf",bbox_inches="tight")
+	savefig("../figures/DiffInICSolvingDiffProb_23_10_19_N52.pdf",bbox_inches="tight")
+end
+
+function analyzeDiffICs_UW()
+	close("all")
+	date_str = "Acc_11_11_19"
+	allp = readdlm("../LOOCV/bestparamsForBatch_10_14_02_19.txt")
+	#global kin_params = readdlm("../parameterEstimation/startingPoint_02_05_18.txt")
+	kin_params=mean(allp, dims=1)
+	d = buildCompleteDictFromOneVector(kin_params)
+	nominal_ICs = d["INITIAL_CONDITION_VECTOR"]
+	#nominal_ICs=[1106.0, 0.0, 60.0, 0.0, 2686.0, 0.79, 3.95, 0.0, 0.0, 7900.0, 971.7, 1.58, 0.0, 0.0, 0.0, 932.2, 0.4424, 0.0]
+	#nominal_experimental=[1.975,15.8,0.553,71.1,134.3,73.47,70.0]
+	nominal_experimental = d["FACTOR_LEVEL_VECTOR"]
+	platelets = d["PLATELET_PARAMS"][5]
+	#add some tPA
+	nominal_ICs[16]=.073
+
+	@show size(nominal_experimental), size(nominal_ICs), size(platelets)
+
+	#concat together
+	all_nominal =vcat(nominal_ICs, nominal_experimental,platelets)
+	errCutoff = 1.0
+
+	exp_condition_names = ["TFPI", "FV", "FVIII", "FIX", "FX", "FXIII", "TAFI", "FXIII"]
+	IC_names =["FII", "FIIa", "PC", "APC", "ATIII", "TM", "TRIGGER","Fraction of Platelets Activated", "FV_FX", "FV_FXa","Prothrombinase Complex", "Fibrin","Plasmin","Fibrinogen", "plasminogen", "tPA", "uPA", "Fibrin \n monomer", "Protofibril", "antiplasmin", "PAI-1", "Fiber"]
+	allnames = vcat(IC_names,exp_condition_names)
+	numparams = maximum(size(allnames))
+
+	#get number of sims by counting files
+	all_fns=readdir("../solveInverseProb/UW/")
+	num_sims =sum(occursin.(date_str,all_fns))
+	data = zeros(length(allnames), num_sims)
+	@show size(data)
+	#which indexes correspond to the initial conditions we've been solving for
+	condition_idxs =[1,3,5,14,15,9,21,23]
+
+	pathToData = "/home/rachel/Documents/washington_burns/PatientsWTEGAndMoreFactors.csv"
+	all_data = CSV.read(pathToData)
+	for j in 1:size(all_data, 1)
+		curr_id = all_data.id[j]
+		curr_hr = all_data.hour[j]
+		curr_res =  readtable(string("../solveInverseProb/UW/",date_str,"_comparisonPSOPatient",curr_id, "Hour", curr_hr,".txt"), separator='\t')
+		for k in 1:size(curr_res)[1]
+			condition_idx =findfirst(x->x==string(curr_res[!,:Name][k]), allnames)
+			#@show curr_res[k,:Actual],curr_res[k,:Estimated], condition_idx
+			data[condition_idx,j]=((curr_res[k,:Actual]/all_nominal[condition_idx]-curr_res[k,:Estimated]/all_nominal[condition_idx])^2)^.5
+		end
+	end
+	@show data, size(data)
+	meandata =mean(data,dims=1)
+
+	figure(figsize = (20,15))
+	#@show size(data[1])
+	numSamples = size(data,2)
+	@show data[condition_idxs, :]
+	#boxplot(data[selidxs]*100, "k")
+	positions = collect(1:maximum(size(condition_idxs)))
+	#errorbars will be std error of the mean
+	std_err=vec(std(data,dims=2)*100/sqrt(numSamples))
+	@show size(positions)
+	@show size(std_err)
+	@show size(vec(mean(data,dims=2)*100))
+	bar(positions, vec(mean(data[condition_idxs],dims=2)*100), yerr = std_err[condition_idxs],color = "lightblue")
+	ax = gca()
+	#ax[:set_yscale]("log")
+	ax[:xaxis][:set_ticks](positions)
+	#axis([0,numparams,0,3.6])
+	ax[:tick_params](labelsize=20)
+	#lines and label for kinetic parameters
+	ax[:xaxis][:set_ticklabels](allnames[condition_idxs], rotation = 45, fontsize = 24, horizontalalignment = "right")
+	axis("tight")
+	#@show size(positions), size(vec(trueICs))
+	ax = gca()
+	ax[:set_ylim]([0,300])
+	ylabel("Initial Concentration\n (% difference of nominal)", fontsize = 36)
+	savefig(string("../figures/DiffInICSolvingDiffProb",date_str,".pdf"),bbox_inches="tight")
 end

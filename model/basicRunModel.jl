@@ -19,13 +19,13 @@ function basicRunModel()
 	#allparams = readdlm("../parameterEstimation/Best2PerObjectiveParameters_05_12_18PlateletContributionToROTEM.txt", '\t')
 	#params = allparams[4,:]
 	allparams = readdlm("../LOOCV/bestparamsForBatch_10_14_02_19.txt")
-	params = allparams[14,:]
+	params = allparams[7,:]
 	close("all")
 	TSTART = 0.0
 	Ts = .02
 	TSTOP = 90.0
 	TSIM = collect(TSTART:Ts:TSTOP)
-	tPA = 2.0
+	tPA = 0.0
 	#pathToData = "../data/ButenasFig1B60nMFVIIa.csv"
 	#pathToData = "../data/Buentas1999Fig4100PercentProthrombin.txt"
 	pathToData = "../data/fromOrfeo_Thrombin_BL_PRP.txt"
@@ -43,13 +43,15 @@ function basicRunModel()
 	initial_condition_vector = dict["INITIAL_CONDITION_VECTOR"]
 	initial_condition_vector[16]=tPA
 	#initial_condition_vector[14]=initial_condition_vector[14]/2
-	@show initial_condition_vector
 	fbalances(y,p,t)= Balances(t,y,dict) 
 	#fbalances(t,y)= Balances(t,y,dict) 
 	#t,X=ODE.ode23s(fbalances,vec(initial_condition_vector),TSIM, abstol = 1E-6, reltol = 1E-6, minstep = 1E-8,maxstep = 1.00)
+	initial_condition_vector[2] = 0.0
+	@show initial_condition_vector
 	prob = ODEProblem(fbalances, initial_condition_vector, (TSTART,TSTOP))
 	#@time sol = solve(prob)
 	@time sol=solve(prob, alg_hints=[:stiff] , dt = .1, dtmax = 1.0, abstol = 1E-6, reltol = 1E-4, force_dtmin=true, saveat = .1,maxiters = 1e7)
+	@show sol
 	t =sol.t
 	X = sol
 	#print(X)
